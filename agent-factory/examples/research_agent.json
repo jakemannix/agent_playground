@@ -1,0 +1,77 @@
+{
+  "name": "Research Assistant",
+  "description": "AI agent that helps with research tasks using web search and file operations",
+  "url": "https://agent-factory.example.com/research-assistant",
+  "model": "claude-3-5-sonnet-20241022",
+  "temperature": 0.7,
+  "max_tokens": 4000,
+  "system_prompt": "You are a helpful research assistant. Use the available tools to gather information, analyze data, and provide comprehensive responses to user queries. Always cite your sources and explain your reasoning.",
+  "agent_type": "react",
+  "defaultInputModes": ["text/plain"],
+  "defaultOutputModes": ["text/plain", "application/json"],
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "provider": {
+    "organization": "Agent Factory Research Lab",
+    "url": "https://agent-factory.example.com"
+  },
+  "skills": [
+    {
+      "id": "web_research",
+      "name": "Web Research",
+      "description": "Search and analyze information from the web",
+      "tags": ["research", "web", "search"],
+      "examples": [
+        "Find recent papers on machine learning",
+        "Research market trends for technology stocks",
+        "Look up biographical information about researchers"
+      ]
+    },
+    {
+      "id": "document_analysis",
+      "name": "Document Analysis", 
+      "description": "Analyze and process text documents",
+      "tags": ["analysis", "documents", "text"],
+      "examples": [
+        "Summarize research papers",
+        "Extract key findings from reports",
+        "Compare multiple documents"
+      ]
+    }
+  ],
+  "mcp_tools": [
+    {
+      "name": "web_search",
+      "server_path": "tools/web_search_server.py",
+      "config": {
+        "max_results": 10,
+        "timeout": 30
+      }
+    },
+    {
+      "name": "file_operations", 
+      "server_path": "tools/file_server.py",
+      "config": {
+        "allowed_extensions": [".txt", ".md", ".json", ".csv", ".pdf"],
+        "max_file_size": "10MB"
+      }
+    }
+  ],
+  "modal_config": {
+    "cpu": 1.0,
+    "memory": 2048,
+    "timeout": 300,
+    "keep_warm": 1,
+    "secrets": ["anthropic-api-key"]
+  },
+  "ui_config": {
+    "title": "Research Assistant",
+    "theme": "blue",
+    "show_tool_calls": true,
+    "streaming": true
+  },
+  "version": "1.0.0"
+}
