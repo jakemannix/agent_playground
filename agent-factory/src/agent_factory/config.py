@@ -32,7 +32,7 @@ class ModalConfig(BaseModel):
     cpu: Optional[float] = Field(default=1.0, description="CPU allocation")
     memory: Optional[int] = Field(default=2048, description="Memory allocation in MB")
     timeout: Optional[int] = Field(default=300, description="Function timeout in seconds")
-    keep_warm: Optional[int] = Field(default=0, description="Number of containers to keep warm")
+    keep_warm: Optional[int] = Field(default=0, description="Number of containers to keep warm (maps to min_containers)")
     secrets: List[str] = Field(
         default_factory=lambda: ["anthropic-api-key"], description="Modal secrets to attach"
     )

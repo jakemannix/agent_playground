@@ -59,7 +59,7 @@ async def create_agent_function(config_dict: Dict[str, Any]) -> Dict[str, Any]:
 @app.function(
     image=image,
     secrets=[modal.Secret.from_name("anthropic-api-key")],
-    keep_warm=1,
+    min_containers=1,
     timeout=60,
 )
 async def agent_invoke(config_dict: Dict[str, Any], message: str, **kwargs) -> Dict[str, Any]:
@@ -139,7 +139,7 @@ async def deploy_agent(config: AgentConfig, name: str | None = None) -> str:
     @app.function(
         image=image,
         secrets=[modal.Secret.from_name(secret) for secret in required_secrets],
-        keep_warm=config.modal_config.keep_warm,
+        min_containers=config.modal_config.keep_warm,
         timeout=config.modal_config.timeout,
         cpu=config.modal_config.cpu,
         memory=config.modal_config.memory,

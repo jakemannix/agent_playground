@@ -36,16 +36,39 @@ Agents are defined via `agent.json` configuration files containing:
 ## Agent Factory
 
 The agent_factory provides a deployment harness that:
-1. Reads agent.json configurations
-2. Instantiates LangGraph agents with specified tools
-3. Deploys to Modal serverless infrastructure
-4. Exposes APIs for agent interaction
+1. Reads agent.json configurations ✅ WORKING
+2. Instantiates LangGraph agents with specified tools ✅ WORKING
+3. Deploys to Modal serverless infrastructure (coming soon)
+4. Exposes APIs for agent interaction (coming soon)
+
+### Current Status
+- **Local testing**: ✅ FULLY WORKING - Can test agents locally with MCP tools
+- **Configuration validation**: ✅ WORKING
+- **MCP integration**: ✅ WORKING via langchain-mcp-adapters
+- **Modal deployment**: Coming soon
+- **API endpoints**: Coming soon
 
 ### Key Patterns
 - **Config-driven**: Agents defined declaratively in JSON
 - **Tool composition**: MCP servers provide modular capabilities
-- **Serverless deployment**: Modal handles scaling and infrastructure
+- **Local development**: Test with localhost MCP servers
+- **Serverless deployment**: Modal handles scaling and infrastructure (coming soon)
 - **Supervisor patterns**: Multi-agent coordination via LangGraph
+
+### Testing Commands
+```bash
+cd agent-factory
+source .venv/bin/activate
+
+# Test weather agent (requires MCP server on localhost:8123)
+agent-factory test examples/weather_agent.json "What's the weather in SF?"
+
+# Verbose testing for debugging
+agent-factory -v test examples/weather_agent.json "test"
+
+# Validate configurations
+agent-factory validate examples/weather_agent.json
+```
 
 ## Tools Package
 

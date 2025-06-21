@@ -58,21 +58,32 @@ cp dummy.env .env
 # Edit .env with your ANTHROPIC_API_KEY and Modal credentials
 ```
 
-2. **Create an agent configuration:**
+2. **Choose or create an agent configuration:**
 
 ```bash
+# Option A: Generate a basic example
 agent-factory example --output my_agent.json
+
+# Option B: Use a pre-built example
+cp examples/weather_agent.json my_agent.json
+cp examples/research_agent.json my_agent.json
 ```
 
-3. **Test your agent locally:**
+3. **Test your agent:**
 
 ```bash
+# Test locally (default - can connect to localhost MCP servers) ✅ WORKING
 agent-factory test my_agent.json "Hello, how can you help me?"
+agent-factory test examples/weather_agent.json "What's the weather in SF?"
+
+# Test on Modal (for deployed agents) - deployment features coming soon
+agent-factory test my_agent.json "Hello!" --modal
 ```
 
 4. **Deploy to Modal:**
 
 ```bash
+# Deploy any agent configuration - deployment features coming soon
 agent-factory deploy my_agent.json
 ```
 
@@ -308,9 +319,23 @@ agent-factory --help
 
 See the `examples/` directory for complete agent configurations:
 
-- `research_agent.json` - Research assistant with web search
-- `code_agent.json` - Code analysis and generation
-- `data_agent.json` - Data processing and analysis
+- `weather_agent.json` - Simple weather assistant using localhost MCP server
+- `research_agent.json` - Research assistant with web search and file operations
+
+### Testing Examples
+
+```bash
+# Test the weather agent locally (requires MCP server on localhost:8123) ✅ WORKING
+agent-factory validate examples/weather_agent.json
+agent-factory test examples/weather_agent.json "What's the weather in Tokyo?"
+
+# Test on Modal (after deployment) - coming soon
+agent-factory test examples/weather_agent.json "What's the weather in Tokyo?" --modal
+
+# Test the research agent (requires MCP tools) - MCP tools TBD
+agent-factory validate examples/research_agent.json
+agent-factory test examples/research_agent.json "Research recent AI developments"
+```
 
 ## A2A Protocol Compatibility
 

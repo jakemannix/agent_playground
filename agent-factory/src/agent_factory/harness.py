@@ -39,22 +39,29 @@ class AgentHarness:
         if not api_key:
             raise ValueError("ANTHROPIC_API_KEY not found in environment")
 
-        self.llm = ChatAnthropic(
-            model=self.config.model,
-            temperature=self.config.temperature,
-            max_tokens=self.config.max_tokens,
-            api_key=api_key,
-        )
+        # Build ChatAnthropic kwargs, excluding None values
+        llm_kwargs = {
+            "model": self.config.model,
+            "temperature": self.config.temperature,
+            "api_key": api_key,
+        }
+        
+        # Only add max_tokens if it's not None
+        if self.config.max_tokens is not None:
+            llm_kwargs["max_tokens"] = self.config.max_tokens
+            
+        logger.info(f"Initializing ChatAnthropic with: {llm_kwargs}")
+        self.llm = ChatAnthropic(**llm_kwargs)
 
         # Load MCP tools
         self.tools = await self._load_mcp_tools()
 
         # Create agent based on type
         if self.config.agent_type == "react":
+            # Create react agent - system prompt is handled by the model itself
             self.agent = create_react_agent(
                 model=self.llm,
                 tools=self.tools,
-                system_message=self.config.system_prompt,
             )
         else:
             # TODO: Implement supervisor agent pattern

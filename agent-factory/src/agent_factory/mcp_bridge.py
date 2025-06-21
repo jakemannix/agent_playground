@@ -8,7 +8,7 @@ import logging
 from typing import List
 
 from langchain_core.tools import BaseTool
-from langchain_mcp_adapters import MCPToolkit
+from langchain_mcp_adapters.client import MultiServerMCPClient
 
 from .config import MCPToolConfig
 
@@ -17,33 +17,39 @@ logger = logging.getLogger(__name__)
 
 async def create_mcp_tools(tool_configs: List[MCPToolConfig]) -> List[BaseTool]:
     """Create LangChain tools from MCP tool configurations."""
-    tools = []
+    if not tool_configs:
+        return []
+    
+    # Build server configuration for MultiServerMCPClient
+    # Each tool_config becomes a server in the client configuration
+    servers_config = {}
     
     for tool_config in tool_configs:
-        try:
-            logger.info(f"Loading MCP tool: {tool_config.name}")
-            
-            # Use langchain-mcp-adapters to create toolkit
-            toolkit = MCPToolkit(
-                server_path=tool_config.server_path,
-                server_config=tool_config.config
-            )
-            
-            # Initialize the toolkit
-            await toolkit.initialize()
-            
-            # Get tools from toolkit
-            mcp_tools = toolkit.get_tools()
-            tools.extend(mcp_tools)
-            
-            logger.info(f"Loaded {len(mcp_tools)} tools from {tool_config.name}")
-            
-        except Exception as e:
-            logger.error(f"Failed to load MCP tool {tool_config.name}: {e}")
-            # Continue with other tools instead of failing completely
-            continue
+        # Use the config directly as the server configuration
+        # This allows flexible configuration like:
+        # { "transport": "streamable_http", "url": "http://localhost:8123" }
+        # or
+        # { "command": "python", "args": ["server.py"], "transport": "stdio" }
+        servers_config[tool_config.name] = tool_config.config
+        logger.info(f"Added MCP server '{tool_config.name}' with config: {tool_config.config}")
     
-    return tools
+    if not servers_config:
+        logger.warning("No MCP server configurations found")
+        return []
+    
+    try:
+        logger.info(f"Creating MultiServerMCPClient with config: {servers_config}")
+        client = MultiServerMCPClient(servers_config)
+        
+        # Get all tools from all configured servers
+        tools = await client.get_tools()
+        
+        logger.info(f"Successfully loaded {len(tools)} tools from MCP servers")
+        return tools
+        
+    except Exception as e:
+        logger.error(f"Failed to create MCP client or load tools: {e}")
+        return []
 
 
 async def create_mcp_tool(tool_config: MCPToolConfig) -> List[BaseTool]:
