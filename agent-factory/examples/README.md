@@ -114,3 +114,13 @@ A research assistant agent with web search and analysis capabilities.
 A weather information agent demonstrating API integration patterns.
 
 Both examples use the current agent_card + deployment configuration format with full MCP tool support. 
+
+To use, once proper MCP proxy setup is in place:
+
+```bash
+agent-factory examples/research_agent.json --message "What's the best overview of A2A, MCP, ACP, and OASF? Make sure to ask for enough results to get stuff on OASF (but perhaps see if you've already done this in the past, as well)" --output examples/research_agent_resolved.json --verbose
+```
+
+Discussion of how to next develop handoffs and MCP/A2A extensions here: 
+
+https://chatgpt.com/share/6870180a-1090-8010-bb75-375d6616c035
