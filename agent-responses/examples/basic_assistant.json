@@ -1,0 +1,25 @@
+{
+  "card": {
+    "name": "Basic Assistant",
+    "description": "A simple AI assistant without external dependencies",
+    "url": "https://example.com/basic-assistant",
+    "version": "1.0.0",
+    "defaultInputModes": ["text/plain"],
+    "defaultOutputModes": ["text/plain"],
+    "capabilities": {
+      "streaming": true,
+      "pushNotifications": false,
+      "stateTransitionHistory": false
+    },
+    "skills": []
+  },
+  "deployment": {
+    "model": "gpt-4o-mini",
+    "temperature": 0.7,
+    "max_output_tokens": 1024,
+    "system_prompt": "You are a helpful AI assistant. Be concise and friendly in your responses.",
+    "modal_cpu": 1.0,
+    "modal_memory": 512,
+    "modal_timeout": 60
+  }
+} 

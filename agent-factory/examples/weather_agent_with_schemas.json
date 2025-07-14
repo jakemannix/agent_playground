@@ -1,0 +1,172 @@
+{
+  "capabilities": {
+    "extensions": [
+      {
+        "description": "Agent supports MCP tool integration with input/output schemas",
+        "params": {
+          "version": "2025-06-18"
+        },
+        "required": false,
+        "uri": "https://github.com/modelcontextprotocol/modelcontextprotocol/releases/tag/2025-06-18"
+      }
+    ],
+    "pushNotifications": false,
+    "stateTransitionHistory": false,
+    "streaming": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain",
+    "application/json"
+  ],
+  "description": "AI agent that provides weather information, web content fetching, and memory capabilities using MCP servers",
+  "documentationUrl": null,
+  "iconUrl": null,
+  "name": "Weather Assistant",
+  "provider": {
+    "organization": "AnyAlignment.ai",
+    "url": "https://api.anyalignment.ai"
+  },
+  "security": null,
+  "securitySchemes": null,
+  "skills": [
+    {
+      "description": "Get current weather information for any location",
+      "examples": [
+        "What's the weather like in San Francisco?",
+        "Get the current temperature in New York",
+        "Is it raining in London right now?"
+      ],
+      "id": "mcp_weather",
+      "inputModes": null,
+      "name": "Weather Lookup",
+      "outputModes": null,
+      "tags": [
+        "weather",
+        "information",
+        "lookup"
+      ],
+      "mcp_config": {
+        "transport": "streamable_http",
+        "url": "http://localhost:8123/mcp"
+      },
+      "input_schema": null,
+      "output_schema": null,
+      "optional": false
+    },
+    {
+      "description": "Fetch web content from URLs to get up-to-date information",
+      "examples": [
+        "Fetch the content from https://example.com",
+        "Get the latest news from a website",
+        "Retrieve information from a specific URL"
+      ],
+      "id": "mcp_fetch",
+      "inputModes": null,
+      "name": "Website Fetcher",
+      "outputModes": null,
+      "tags": [
+        "web",
+        "fetch",
+        "content",
+        "information"
+      ],
+      "mcp_config": {
+        "transport": "sse",
+        "url": "http://127.0.0.1:18456/servers/fetch/sse"
+      },
+      "input_schema": {
+        "$defs": {
+          "ToolCall": {
+            "description": "Represents a request to call a tool.\n\nExample:\n\n    .. code-block:: python\n\n        {\n            \"name\": \"foo\",\n            \"args\": {\"a\": 1},\n            \"id\": \"123\"\n        }\n\n    This represents a request to call the tool named \"foo\" with arguments {\"a\": 1}\n    and an identifier of \"123\".",
+            "properties": {
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "args": {
+                "additionalProperties": true,
+                "title": "Args",
+                "type": "object"
+              },
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Id"
+              },
+              "type": {
+                "const": "tool_call",
+                "title": "Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "args",
+              "id"
+            ],
+            "title": "ToolCall",
+            "type": "object"
+          }
+        },
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          {
+            "$ref": "#/$defs/ToolCall"
+          }
+        ],
+        "title": "fetch_input"
+      },
+      "output_schema": {
+        "title": "fetch_output"
+      },
+      "optional": false
+    },
+    {
+      "description": "Store and retrieve information across conversations",
+      "examples": [
+        "Remember that the user prefers Celsius temperature",
+        "Store the user's favorite locations",
+        "Recall previous weather preferences"
+      ],
+      "id": "mcp_memory",
+      "inputModes": null,
+      "name": "Memory Storage",
+      "outputModes": null,
+      "tags": [
+        "memory",
+        "storage",
+        "persistence",
+        "recall"
+      ],
+      "mcp_config": {
+        "transport": "sse",
+        "url": "http://127.0.0.1:18456/servers/memory/sse"
+      },
+      "input_schema": null,
+      "output_schema": null,
+      "optional": false
+    }
+  ],
+  "supportsAuthenticatedExtendedCard": null,
+  "url": "https://your-domain.com/weather-agent",
+  "version": "1.0.0",
+  "agent_type": "react",
+  "ui_modes": [
+    "chat"
+  ]
+}

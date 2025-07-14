@@ -1,0 +1,58 @@
+{
+  "agent_card": {
+    "name": "Example Agent",
+    "description": "An example AI agent for demonstration",
+    "url": "https://your-domain.com/example-agent",
+    "provider": {
+      "organization": "Your Organization",
+      "url": "https://your-organization.com"
+    },
+    "version": "1.0.0",
+    "defaultInputModes": ["text/plain"],
+    "defaultOutputModes": ["text/plain"],
+    "capabilities": {
+      "streaming": true,
+      "pushNotifications": false,
+      "stateTransitionHistory": false,
+      "extensions": [
+        {
+          "uri": "https://modelcontextprotocol.io/mcp/1.0",
+          "description": "Agent supports MCP tool integration with input/output schemas",
+          "required": false,
+          "params": {"version": "2025-06-18"}
+        }
+      ]
+    },
+    "agent_type": "react",
+    "ui_modes": ["chat"],
+    "skills": [
+      {
+        "id": "mcp_example_tool",
+        "name": "example_tool",
+        "description": "An example MCP tool",
+        "tags": ["mcp", "tool"],
+        "examples": ["Use example_tool to perform tasks"],
+        "mcp_config": {
+          "transport": "stdio",
+          "command": "python",
+          "args": ["tools/example_mcp_server.py"]
+        }
+      }
+    ]
+  },
+  "deployment": {
+    "llm": {
+      "model": "claude-3-5-sonnet-20241022",
+      "temperature": 0.7,
+      "max_tokens": null,
+      "system_prompt": "You are a helpful AI assistant. Use the available tools to help users with their requests."
+    },
+    "modal": {
+      "cpu": 1.0,
+      "memory": 2048,
+      "timeout": 300,
+      "keep_warm": 0,
+      "secrets": ["anthropic-api-key"]
+    }
+  }
+} 

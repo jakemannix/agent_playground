@@ -1,59 +1,97 @@
 {
-  "name": "Weather Assistant",
-  "description": "Simple AI agent that provides weather information using a local MCP server",
-  "url": "https://your-domain.com/weather-agent",
-  "system_prompt": "You are a helpful weather assistant. Use the weather tool to get current weather information for any location the user asks about. Always provide clear, concise weather updates.",
-  "model": "claude-3-5-sonnet-20241022",
-  "temperature": 0.3,
-  "agent_type": "react",
-  "version": "1.0.0",
-  "defaultInputModes": ["text/plain"],
-  "defaultOutputModes": ["text/plain", "application/json"],
-  "capabilities": {
-    "streaming": true,
-    "pushNotifications": false,
-    "stateTransitionHistory": false
-  },
-  "provider": {
-    "organization": "${AGENT_PROVIDER_ORG}",
-    "url": "${AGENT_PROVIDER_URL}"
-  },
-  "skills": [
-    {
-      "id": "weather_lookup",
-      "name": "Weather Lookup",
-      "description": "Get current weather information for any location",
-      "tags": ["weather", "information", "lookup"],
-      "examples": [
-        "What's the weather like in San Francisco?",
-        "Get the current temperature in New York",
-        "Is it raining in London right now?"
-      ],
-      "inputModes": ["text/plain"],
-      "outputModes": ["text/plain"]
-    }
-  ],
-  "mcp_tools": [
-    {
-      "name": "weather",
-      "server_path": "unused",
-      "config": {
-        "transport": "streamable_http",
-        "url": "http://localhost:8123/mcp"
+  "agent_card": {
+    "name": "Weather Assistant",
+    "description": "AI agent that provides weather information, web content fetching, and memory capabilities using MCP servers",
+    "url": "https://your-domain.com/weather-agent",
+    "version": "1.0.0",
+    "defaultInputModes": ["text/plain"],
+    "defaultOutputModes": ["text/plain", "application/json"],
+    "capabilities": {
+      "streaming": true,
+      "pushNotifications": false,
+      "stateTransitionHistory": false,
+      "extensions": [
+        {
+          "uri": "https://github.com/modelcontextprotocol/modelcontextprotocol/releases/tag/2025-06-18",
+          "description": "Agent supports MCP tool integration with input/output schemas",
+          "required": false,
+          "params": {"version": "2025-06-18"}
+        }
+      ]
+    },
+    "provider": {
+      "organization": "${AGENT_PROVIDER_ORG}",
+      "url": "${AGENT_PROVIDER_URL}"
+    },
+    "agent_type": "react",
+    "ui_modes": ["chat"],
+    "skills": [
+      {
+        "id": "mcp_weather",
+        "name": "Weather Lookup",
+        "description": "Get current weather information for any location",
+        "tags": ["weather", "information", "lookup"],
+        "examples": [
+          "What's the weather like in San Francisco?",
+          "Get the current temperature in New York",
+          "Is it raining in London right now?"
+        ],
+        "mcp_config": {
+          "transport": "streamable_http",
+          "url": "http://localhost:8123/mcp"
+        }
+      },
+      {
+        "id": "mcp_fetch",
+        "name": "Website Fetcher",
+        "description": "Fetch web content from URLs to get up-to-date information",
+        "tags": ["web", "fetch", "content", "information"],
+        "examples": [
+          "Fetch the content from https://example.com",
+          "Get the latest news from a website",
+          "Retrieve information from a specific URL"
+        ],
+        "mcp_config": {
+          "transport": "sse",
+          "url": "http://127.0.0.1:18456/servers/fetch/sse"
+        }
+      },
+      {
+        "id": "mcp_memory",
+        "name": "Memory Storage",
+        "description": "Store and retrieve information across conversations",
+        "tags": ["memory", "storage", "persistence", "recall"],
+        "examples": [
+          "Remember that the user prefers Celsius temperature",
+          "Store the user's favorite locations",
+          "Recall previous weather preferences"
+        ],
+        "mcp_config": {
+          "transport": "sse",
+          "url": "http://127.0.0.1:18456/servers/memory/sse"
+        }
       }
-    }
-  ],
-  "modal_config": {
-    "cpu": 1.0,
-    "memory": 1024,
-    "timeout": 120,
-    "keep_warm": 0,
-    "secrets": ["anthropic-api-key"]
+    ]
   },
-  "ui_config": {
-    "title": "Weather Assistant",
-    "theme": "blue",
-    "show_tool_calls": true,
-    "streaming": true
+  "deployment": {
+    "llm": {
+      "model": "claude-3-5-sonnet-20241022",
+      "temperature": 0.3,
+      "max_tokens": null,
+      "system_prompt": "You are a helpful weather assistant with enhanced capabilities. You can:\n1. Get current weather information for any location using the weather tool\n2. Fetch web content from URLs to get additional weather-related information\n3. Remember user preferences and previous conversations using memory storage\n\nAlways provide clear, concise weather updates and remember user preferences for future interactions."
+    },
+    "modal": {
+      "cpu": 1.0,
+      "memory": 1024,
+      "timeout": 120,
+      "keep_warm": 0,
+      "secrets": ["anthropic-api-key"]
+    },
+    "ui_config": {
+      "title": "Weather Assistant",
+      "theme": "blue",
+      "show_tool_calls": true,
+      "streaming": true
+    }
   }
 }

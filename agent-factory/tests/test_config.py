@@ -5,25 +5,39 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from a2a.types import AgentCard, AgentCapabilities, AgentProvider, AgentSkill
+from a2a.types import AgentCard, AgentCapabilities, AgentProvider, AgentSkill, AgentExtension
 
-from agent_factory.config import AgentConfig, MCPToolConfig, ModalConfig
+from agent_factory.config import (
+    AgentConfiguration, 
+    MCPAgentCard, 
+    MCPSkill, 
+    ModalConfig,
+    LLMConfig,
+    DeploymentConfig
+)
 
 
-class TestMCPToolConfig:
-    """Test MCP tool configuration."""
+class TestMCPSkill:
+    """Test MCP skill configuration."""
 
-    def test_create_mcp_tool_config(self):
-        """Test creating MCP tool configuration."""
-        config = MCPToolConfig(
-            name="test_tool",
-            server_path="path/to/server.py",
-            config={"key": "value"}
+    def test_create_mcp_skill(self):
+        """Test creating MCP skill."""
+        skill = MCPSkill(
+            id="mcp_test",
+            name="Test Tool",
+            description="A test MCP tool",
+            tags=["mcp", "test"],
+            examples=["Use test tool"],
+            mcp_config={"transport": "stdio", "command": "test"},
+            input_schema={"type": "object"},
+            output_schema={"type": "object"}
         )
         
-        assert config.name == "test_tool"
-        assert config.server_path == "path/to/server.py"
-        assert config.config == {"key": "value"}
+        assert skill.id == "mcp_test"
+        assert skill.name == "Test Tool"
+        assert skill.mcp_config == {"transport": "stdio", "command": "test"}
+        assert skill.input_schema == {"type": "object"}
+        assert skill.output_schema == {"type": "object"}
 
 
 class TestModalConfig:
@@ -56,176 +70,149 @@ class TestModalConfig:
         assert config.secrets == ["custom-secret"]
 
 
-class TestAgentConfig:
-    """Test agent configuration."""
+class TestLLMConfig:
+    """Test LLM configuration."""
 
-    def test_minimal_agent_config(self):
-        """Test creating minimal agent configuration."""
-        config = AgentConfig(
-            name="Test Agent",
-            description="A test agent",
-            url="https://example.com/agent",
-            system_prompt="You are a test agent."
+    def test_llm_config(self):
+        """Test LLM configuration."""
+        config = LLMConfig(
+            model="claude-3-5-sonnet-20241022",
+            temperature=0.7,
+            max_tokens=1000,
+            system_prompt="You are a helpful assistant."
         )
         
-        assert config.name == "Test Agent"
-        assert config.description == "A test agent"
-        assert config.url == "https://example.com/agent"
-        assert config.system_prompt == "You are a test agent."
         assert config.model == "claude-3-5-sonnet-20241022"
         assert config.temperature == 0.7
-        assert config.agent_type == "react"
-        assert config.version == "1.0.0"
+        assert config.max_tokens == 1000
+        assert config.system_prompt == "You are a helpful assistant."
 
-    def test_agent_config_with_a2a_fields(self):
-        """Test agent configuration with A2A fields."""
+
+class TestMCPAgentCard:
+    """Test MCP agent card."""
+
+    def test_mcp_agent_card_with_extension(self):
+        """Test MCP agent card includes MCP extension."""
         skills = [
-            AgentSkill(
-                id="test_skill",
-                name="Test Skill",
-                description="A test skill",
-                tags=["test"],
-                examples=["Test example"]
+            MCPSkill(
+                id="mcp_test",
+                name="Test Tool",
+                description="A test MCP tool",
+                tags=["mcp", "test"],
+                mcp_config={"transport": "stdio"}
             )
         ]
         
-        capabilities = AgentCapabilities(
-            streaming=True,
-            pushNotifications=False
-        )
-        
-        provider = AgentProvider(
-            organization="Test Org",
-            url="https://test.com"
-        )
-        
-        config = AgentConfig(
+        card = MCPAgentCard(
             name="Test Agent",
-            description="A test agent", 
+            description="A test agent",
             url="https://example.com/agent",
-            system_prompt="You are a test agent.",
+            version="1.0.0",
             skills=skills,
-            capabilities=capabilities,
-            provider=provider,
             defaultInputModes=["text/plain"],
             defaultOutputModes=["text/plain"]
         )
         
-        assert config.skills == skills
-        assert config.capabilities == capabilities
-        assert config.provider == provider
-        assert config.defaultInputModes == ["text/plain"]
-        assert config.defaultOutputModes == ["text/plain"]
+        # Check MCP extension is present
+        assert card.capabilities.extensions
+        mcp_ext = next(e for e in card.capabilities.extensions if "modelcontextprotocol.io" in e.uri)
+        assert mcp_ext.params["version"] == "2025-06-18"
 
-    def test_agent_config_with_mcp_tools(self):
-        """Test agent configuration with MCP tools."""
-        mcp_tools = [
-            MCPToolConfig(
-                name="test_tool",
-                server_path="path/to/server.py",
-                config={"key": "value"}
+
+class TestAgentConfiguration:
+    """Test complete agent configuration."""
+
+    def test_create_agent_configuration(self):
+        """Test creating agent configuration."""
+        skills = [
+            MCPSkill(
+                id="mcp_test",
+                name="Test Tool",
+                description="A test MCP tool",
+                tags=["mcp", "test"],
+                mcp_config={"transport": "stdio"}
             )
         ]
         
-        config = AgentConfig(
-            name="Test Agent",
-            description="A test agent",
-            url="https://example.com/agent", 
-            system_prompt="You are a test agent.",
-            mcp_tools=mcp_tools
-        )
-        
-        assert len(config.mcp_tools) == 1
-        assert config.mcp_tools[0].name == "test_tool"
-        
-        # Check that skills were auto-generated from MCP tools
-        assert len(config.skills) == 1
-        assert config.skills[0].id == "mcp_test_tool"
-        assert config.skills[0].name == "test_tool"
-
-    def test_agent_type_validation(self):
-        """Test agent type validation."""
-        with pytest.raises(ValueError, match="agent_type must be 'react' or 'supervisor'"):
-            AgentConfig(
-                name="Test Agent",
-                description="A test agent",
-                url="https://example.com/agent",
-                system_prompt="You are a test agent.",
-                agent_type="invalid"
-            )
-
-    def test_to_agent_card(self):
-        """Test converting to A2A agent card."""
-        config = AgentConfig(
+        agent_card = MCPAgentCard(
             name="Test Agent",
             description="A test agent",
             url="https://example.com/agent",
-            system_prompt="You are a test agent.",
-            model="gpt-4",
-            temperature=0.8
+            version="1.0.0",
+            skills=skills,
+            agent_type="react",
+            ui_modes=["chat"],
+            defaultInputModes=["text/plain"],
+            defaultOutputModes=["text/plain"]
         )
         
-        agent_card = config.to_agent_card()
+        deployment = DeploymentConfig(
+            llm=LLMConfig(
+                model="claude-3-5-sonnet-20241022",
+                temperature=0.7,
+                system_prompt="You are a test agent."
+            ),
+            modal=ModalConfig(),
+            ui_config={"theme": "light"}
+        )
         
-        # Should have A2A fields
-        assert isinstance(agent_card, AgentCard)
-        assert agent_card.name == "Test Agent"
-        assert agent_card.description == "A test agent"
-        assert agent_card.url == "https://example.com/agent"
+        config = AgentConfiguration(
+            agent_card=agent_card,
+            deployment=deployment
+        )
         
-        # Should not have deployment-specific fields
-        assert not hasattr(agent_card, 'model')
-        assert not hasattr(agent_card, 'temperature')
-        assert not hasattr(agent_card, 'system_prompt')
+        assert config.agent_card.name == "Test Agent"
+        assert config.deployment.llm.model == "claude-3-5-sonnet-20241022"
+        assert config.deployment.modal.cpu == 1.0
 
     def test_file_operations(self):
-        """Test saving and loading configuration files."""
-        config = AgentConfig(
-            name="Test Agent",
-            description="A test agent",
-            url="https://example.com/agent",
-            system_prompt="You are a test agent."
-        )
-        
+        """Test saving and loading configuration from files."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            config_path = Path(tmpdir) / "test_agent.json"
+            config_path = Path(tmpdir) / "test.json"
             
-            # Save configuration
+            config = AgentConfiguration(
+                agent_card=MCPAgentCard(
+                    name="Test Agent",
+                    description="Test description",
+                    url="https://example.com",
+                    version="1.0.0",
+                    defaultInputModes=["textMessage"],
+                    defaultOutputModes=["textMessage"],
+                    skills=[],
+                    agent_type="react"
+                ),
+                deployment=DeploymentConfig(
+                    llm=LLMConfig(
+                        model="claude-3-5-sonnet-20241022",
+                        system_prompt="Test prompt"
+                    )
+                )
+            )
+            
+            # Save to file
             config.to_file(str(config_path))
             assert config_path.exists()
             
-            # Load configuration
-            loaded_config = AgentConfig.from_file(str(config_path))
-            assert loaded_config.name == config.name
-            assert loaded_config.description == config.description
-            assert loaded_config.url == config.url
-            assert loaded_config.system_prompt == config.system_prompt
-
-    def test_env_var_expansion(self):
-        """Test environment variable expansion."""
-        import os
-        os.environ['TEST_VAR'] = 'test_value'
-        
-        config_data = {
-            "name": "Test Agent",
-            "description": "A test agent",
-            "url": "https://example.com/agent",
-            "system_prompt": "You are ${TEST_VAR}."
-        }
-        
-        expanded = AgentConfig._expand_env_vars(config_data)
-        assert expanded['system_prompt'] == "You are test_value."
-        
-        # Clean up
-        del os.environ['TEST_VAR']
+            # Load from file
+            loaded_config = AgentConfiguration.from_file(str(config_path))
+            assert loaded_config.agent_card.name == "Test Agent"
+            assert loaded_config.deployment.llm.model == "claude-3-5-sonnet-20241022"
 
     def test_get_well_known_url(self):
-        """Test getting .well-known URL."""
-        config = AgentConfig(
-            name="Test Agent",
-            description="A test agent",
-            url="https://example.com/agent",
-            system_prompt="You are a test agent."
+        """Test getting well-known URL."""
+        config = AgentConfiguration(
+            agent_card=MCPAgentCard(
+                name="Test Agent",
+                description="A test agent",
+                url="https://example.com/agent",
+                version="1.0.0",
+                skills=[],
+                defaultInputModes=["text/plain"],
+                defaultOutputModes=["text/plain"]
+            ),
+            deployment=DeploymentConfig(
+                llm=LLMConfig(system_prompt="Test")
+            )
         )
         
         well_known_url = config.get_well_known_url("https://example.com")

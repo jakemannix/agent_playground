@@ -1,0 +1,41 @@
+agent_card:
+  name: "Research Assistant"
+  description: "AI-powered research assistant with web search capabilities"
+  url: "https://example.com/research-agent"
+  ui_modes: ["chat", "form"]
+  skills:
+    - id: "mcp_web_search"
+      name: "web_search"
+      description: "Search the web for information"
+      tags: ["search", "web", "research"]
+      examples: ["Search for recent AI papers", "Find information about climate change"]
+      mcp_config:
+        transport: "http"
+        url: "http://localhost:8000/mcp"
+        headers:
+          Authorization: "Bearer ${WEB_SEARCH_API_KEY}"
+    - id: "mcp_arxiv"
+      name: "arxiv_search"
+      description: "Search academic papers on arXiv"
+      tags: ["research", "papers", "academic"]
+      examples: ["Find papers on transformer architectures", "Search for quantum computing research"]
+      mcp_config:
+        transport: "stdio"
+        command: "python"
+        args: ["-m", "mcp_servers.arxiv"]
+
+deployment:
+  llm:
+    temperature: 0.3
+    system_prompt: |
+      You are a knowledgeable research assistant with expertise in finding and analyzing information.
+      Your goal is to help users conduct thorough research by:
+      1. Searching for relevant information across multiple sources
+      2. Synthesizing findings into clear, well-structured responses
+      3. Providing citations and sources for all claims
+      4. Highlighting any limitations or uncertainties in the available data
+      
+      Always strive for accuracy and objectivity in your research.
+  modal:
+    memory: 4096
+    timeout: 600 

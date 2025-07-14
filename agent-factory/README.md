@@ -8,7 +8,7 @@ A modern Python framework for deploying config-driven AI agents to Modal serverl
 - 🔧 **MCP tool integration** - Seamless integration with Model Context Protocol tools via langchain-mcp-adapters
 - ☁️ **Modal deployment** - Serverless deployment to Modal with automatic scaling
 - 🌐 **A2A compatibility** - Extends Agent-to-Agent protocol standards for interoperability
-- 🔄 **LangGraph orchestration** - Built on LangGraph's `create_react_agent()` and supervisor patterns
+- 🔄 **LangGraph orchestration** - Built on LangGraph's `create_react_agent()`
 - 🎯 **FastAPI endpoints** - Production-ready APIs with health checks and A2A discovery
 - 🧪 **Full test coverage** - Comprehensive test suite with pytest
 
@@ -61,10 +61,8 @@ cp dummy.env .env
 2. **Choose or create an agent configuration:**
 
 ```bash
-# Option A: Generate a basic example
-agent-factory example --output my_agent.json
-
-# Option B: Use a pre-built example
+# Use a pre-built example
+cp examples/configs/basic-example.json my_agent.json
 cp examples/weather_agent.json my_agent.json
 cp examples/research_agent.json my_agent.json
 ```
@@ -72,19 +70,20 @@ cp examples/research_agent.json my_agent.json
 3. **Test your agent:**
 
 ```bash
-# Test locally (default - can connect to localhost MCP servers) ✅ WORKING
-agent-factory test my_agent.json "Hello, how can you help me?"
-agent-factory test examples/weather_agent.json "What's the weather in SF?"
+# Run a single message and exit
+agent-factory my_agent.json --message "Hello, how can you help me?"
+agent-factory examples/weather_agent.json --message "What's the weather in SF?"
 
-# Test on Modal (for deployed agents) - deployment features coming soon
-agent-factory test my_agent.json "Hello!" --modal
+# Start interactive server locally (default port 8000)
+agent-factory my_agent.json
+agent-factory my_agent.json --port 3000
 ```
 
 4. **Deploy to Modal:**
 
 ```bash
-# Deploy any agent configuration - deployment features coming soon
-agent-factory deploy my_agent.json
+# Deploy to Modal cloud
+agent-factory my_agent.json --deploy
 ```
 
 ### Configuration
@@ -114,39 +113,26 @@ See `dummy.env` for a complete list of available configuration options.
 
 ## Agent Configuration
 
-Agent Factory uses JSON configuration files that extend the A2A AgentCard standard:
+Agent Factory uses JSON configuration files that extend the A2A AgentCard standard. See the working examples in the `examples/` directory:
+
+- `examples/weather_agent.json` - Weather agent with MCP tool integration
+- `examples/research_agent.json` - Research agent configuration
+
+Example agent configuration structure:
 
 ```json
 {
-  "name": "Research Assistant",
-  "description": "AI agent for research tasks",
-  "url": "https://your-domain.com/research-agent",
-  "system_prompt": "You are a helpful research assistant...",
-  "model": "claude-3-5-sonnet-20241022",
-  "temperature": 0.7,
-  "agent_type": "react",
-  "skills": [
-    {
-      "id": "web_research",
-      "name": "Web Research", 
-      "description": "Search and analyze web information",
-      "tags": ["research", "web"],
-      "examples": ["Find recent papers on AI"]
+  "agent_card": {
+    "name": "Your Agent Name",
+    "description": "Agent description",
+    "skills": [/* MCP tool configurations */]
+  },
+  "deployment": {
+    "llm": {
+      "model": "claude-3-5-sonnet-20241022",
+      "temperature": 0.7,
+      "system_prompt": "Your system prompt..."
     }
-  ],
-  "mcp_tools": [
-    {
-      "name": "web_search",
-      "server_path": "tools/web_search_server.py",
-      "config": {
-        "max_results": 10
-      }
-    }
-  ],
-  "modal_config": {
-    "cpu": 1.0,
-    "memory": 2048,
-    "keep_warm": 1
   }
 }
 ```
@@ -157,7 +143,7 @@ Agent Factory uses JSON configuration files that extend the A2A AgentCard standa
 - `name` - Agent name
 - `description` - Agent description  
 - `url` - Agent endpoint URL
-- `skills` - Agent capabilities (auto-generated from MCP tools)
+- `skills` - Agent capabilities with MCP configurations
 - `capabilities` - Streaming, notifications, etc.
 - `provider` - Organization information
 - `version` - Agent version
@@ -166,28 +152,20 @@ Agent Factory uses JSON configuration files that extend the A2A AgentCard standa
 - `system_prompt` - LLM system prompt
 - `model` - LLM model (default: claude-3-5-sonnet-20241022)
 - `temperature` - Sampling temperature (0.0-2.0)
-- `agent_type` - "react" or "supervisor"
-- `mcp_tools` - MCP tool configurations
-- `modal_config` - Modal deployment settings
+- `agent_type` - "react" only (ReAct pattern agent)
+- `ui_modes` - Supported UI interaction modes
 
 ## MCP Tool Integration
 
-Agent Factory uses [langchain-mcp-adapters](https://github.com/langchain-ai/langchain-mcp-adapters) for seamless MCP integration:
+Agent Factory uses [langchain-mcp-adapters](https://github.com/langchain-ai/langchain-mcp-adapters) for seamless MCP integration. Tools are configured in the `skills` array of your agent configuration. See `examples/weather_agent.json` for a complete working example with multiple MCP tools.
 
-```json
-{
-  "mcp_tools": [
-    {
-      "name": "filesystem",
-      "server_path": "mcp_servers/filesystem.py",
-      "config": {
-        "allowed_dirs": ["/workspace"],
-        "max_file_size": "10MB"
-      }
-    }
-  ]
-}
-```
+### Tool Availability Handling
+
+Agent Factory ensures agents don't claim capabilities they can't deliver:
+
+1. **Required Skills (default)**: Agent initialization fails if MCP servers are unavailable
+2. **Optional Skills**: Set `"optional": true` to continue without specific tools
+3. **Strict Validation**: Set `deployment.strict_tool_validation` to `false` to allow degraded operation
 
 Tools are automatically converted to LangChain tools and made available to the agent.
 
@@ -299,42 +277,130 @@ pip install -e .
 ## CLI Reference
 
 ```bash
-# Create example configuration
-agent-factory example --output example.json
+# Run agent interactively (starts web server)
+agent-factory config.json
+agent-factory config.json --port 3000
 
-# Validate configuration
-agent-factory validate config.json
+# Run single message and exit
+agent-factory config.json --message "Hello!"
 
-# Test agent locally
-agent-factory test config.json "test message"
+# Run and save agent card with extracted schemas
+agent-factory config.json --message "Hello!" --output complete-config.json
 
-# Deploy to Modal
-agent-factory deploy config.json --name my-agent
+# Use strict validation (fails if schemas changed)
+agent-factory complete-config.json --strict
+
+# Create config from template with overrides
+agent-factory template.json --apply overrides.yaml --output custom.json
+agent-factory template.json --set agent_card.name="Custom" --output custom.json
+
+# Deploy to Modal cloud
+agent-factory config.json --deploy
 
 # Help
 agent-factory --help
 ```
 
-## Examples
+## Running the Weather Agent Example
 
-See the `examples/` directory for complete agent configurations:
+The weather agent example demonstrates MCP tool integration and requires external MCP servers. Follow these steps:
 
-- `weather_agent.json` - Simple weather assistant using localhost MCP server
-- `research_agent.json` - Research assistant with web search and file operations
-
-### Testing Examples
+### 1. Environment Setup
 
 ```bash
-# Test the weather agent locally (requires MCP server on localhost:8123) ✅ WORKING
-agent-factory validate examples/weather_agent.json
-agent-factory test examples/weather_agent.json "What's the weather in Tokyo?"
+# Ensure .env file exists and is populated
+cp dummy.env .env
+# Edit .env to add your ANTHROPIC_API_KEY
 
-# Test on Modal (after deployment) - coming soon
-agent-factory test examples/weather_agent.json "What's the weather in Tokyo?" --modal
+# Activate virtual environment
+cd agent-factory
+source .venv/bin/activate
+```
 
-# Test the research agent (requires MCP tools) - MCP tools TBD
-agent-factory validate examples/research_agent.json
-agent-factory test examples/research_agent.json "Research recent AI developments"
+### 2. Launch MCP Proxy Server
+
+In one terminal, start the MCP proxy server for fetch and memory tools:
+
+```bash
+cd ../tools  # Navigate to agent_playground/tools directory
+
+# Install mcp-proxy if needed
+pip install mcp-proxy
+
+# Start MCP proxy server
+python -m mcp_proxy \
+    --port=18456 \
+    --host=127.0.0.1 \
+    --named-server-config=servers_config.json \
+    --pass-environment \
+    --allow-origin="*" \
+    --debug
+```
+
+### 3. Launch Weather MCP Server
+
+In another terminal, start the weather server:
+
+```bash
+# Option A: If you have cloned invariantlabs-ai/mcp-streamable-http
+cd path/to/mcp-streamable-http/python-example/server
+python weather.py --port 8123
+
+# Option B: Use the example server in tools/
+cd agent_playground/tools
+python example_mcp_server.py --port 8123
+```
+
+### 4. Test the Weather Agent
+
+With both MCP servers running:
+
+```bash
+cd agent-factory
+
+# Test with a single message
+agent-factory examples/weather_agent.json --message "What's the weather in Seattle?"
+
+# Start interactive server
+agent-factory examples/weather_agent.json --port 8000
+```
+
+The agent will have access to weather data, web fetching, and memory capabilities through the MCP servers.
+
+## Configuration Management
+
+### Schema Extraction and Caching
+
+Agent Factory automatically extracts MCP tool schemas when running agents:
+
+```bash
+# First run extracts schemas and saves complete config
+agent-factory my-agent.json --output my-agent-complete.json
+
+# Subsequent runs use cached schemas (faster startup)
+agent-factory my-agent-complete.json
+```
+
+### Template-Based Configuration
+
+Create custom agents by applying overrides to base templates:
+
+```bash
+# Use YAML overrides
+agent-factory base.json --apply custom.yaml --output result.json
+
+# Use inline overrides
+agent-factory base.json \
+  --set agent_card.name="My Agent" \
+  --set deployment.llm.temperature=0.5 \
+  --output result.json
+```
+
+### Testing Other Examples
+
+```bash
+# Test the research agent (may not require external MCP servers)
+agent-factory examples/research_agent.json --message "Research recent AI developments"
 ```
 
 ## A2A Protocol Compatibility

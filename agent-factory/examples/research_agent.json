@@ -1,77 +1,100 @@
 {
-  "name": "Research Assistant",
-  "description": "AI agent that helps with research tasks using web search and file operations",
-  "url": "https://agent-factory.example.com/research-assistant",
-  "model": "claude-3-5-sonnet-20241022",
-  "temperature": 0.7,
-  "max_tokens": 4000,
-  "system_prompt": "You are a helpful research assistant. Use the available tools to gather information, analyze data, and provide comprehensive responses to user queries. Always cite your sources and explain your reasoning.",
-  "agent_type": "react",
-  "defaultInputModes": ["text/plain"],
-  "defaultOutputModes": ["text/plain", "application/json"],
-  "capabilities": {
-    "streaming": true,
-    "pushNotifications": false,
-    "stateTransitionHistory": true
-  },
-  "provider": {
-    "organization": "Agent Factory Research Lab",
-    "url": "https://agent-factory.example.com"
-  },
-  "skills": [
-    {
-      "id": "web_research",
-      "name": "Web Research",
-      "description": "Search and analyze information from the web",
-      "tags": ["research", "web", "search"],
-      "examples": [
-        "Find recent papers on machine learning",
-        "Research market trends for technology stocks",
-        "Look up biographical information about researchers"
+  "agent_card": {
+    "name": "Research Assistant",
+    "description": "AI agent that helps with research tasks using web search, file operations, and memory storage",
+    "url": "https://agent-factory.example.com/research-assistant",
+    "version": "1.0.0",
+    "defaultInputModes": ["text/plain"],
+    "defaultOutputModes": ["text/plain", "application/json"],
+    "capabilities": {
+      "streaming": true,
+      "pushNotifications": false,
+      "stateTransitionHistory": true,
+      "extensions": [
+        {
+          "uri": "https://modelcontextprotocol.io/mcp/1.0",
+          "description": "Agent supports MCP tool integration with input/output schemas",
+          "required": false,
+          "params": {"version": "2025-06-18"}
+        }
       ]
     },
-    {
-      "id": "document_analysis",
-      "name": "Document Analysis", 
-      "description": "Analyze and process text documents",
-      "tags": ["analysis", "documents", "text"],
-      "examples": [
-        "Summarize research papers",
-        "Extract key findings from reports",
-        "Compare multiple documents"
-      ]
-    }
-  ],
-  "mcp_tools": [
-    {
-      "name": "web_search",
-      "server_path": "tools/web_search_server.py",
-      "config": {
-        "max_results": 10,
-        "timeout": 30
-      }
+    "provider": {
+      "organization": "Agent Factory Research Lab",
+      "url": "https://agent-factory.example.com"
     },
-    {
-      "name": "file_operations", 
-      "server_path": "tools/file_server.py",
-      "config": {
-        "allowed_extensions": [".txt", ".md", ".json", ".csv", ".pdf"],
-        "max_file_size": "10MB"
+    "agent_type": "react",
+    "ui_modes": ["chat"],
+    "skills": [
+      {
+        "id": "mcp_search",
+        "name": "Web Search",
+        "description": "Search the web using DuckDuckGo to find information on any topic",
+        "tags": ["research", "web", "search", "information"],
+        "examples": [
+          "Search for recent developments in AI",
+          "Find information about A2A protocol",
+          "Look up MCP documentation",
+          "Research current events in technology"
+        ],
+        "mcp_config": {
+          "transport": "sse",
+          "url": "http://127.0.0.1:18456/servers/search/sse"
+        }
+      },
+      {
+        "id": "mcp_fetch",
+        "name": "Web Content Fetcher",
+        "description": "Fetch and read content from specific URLs for detailed analysis",
+        "tags": ["research", "web", "fetch", "content", "analysis"],
+        "examples": [
+          "Fetch content from a specific research paper URL",
+          "Get detailed content from a documentation page",
+          "Retrieve full text from a news article",
+          "Extract content from a blog post"
+        ],
+        "mcp_config": {
+          "transport": "sse",
+          "url": "http://127.0.0.1:18456/servers/fetch/sse"
+        }
+      },
+      {
+        "id": "mcp_memory",
+        "name": "Research Memory",
+        "description": "Store and retrieve research findings, notes, and insights across conversations",
+        "tags": ["memory", "storage", "persistence", "research", "notes"],
+        "examples": [
+          "Remember key findings from previous research",
+          "Store important research notes and citations",
+          "Recall previous research topics and conclusions",
+          "Keep track of research progress and next steps"
+        ],
+        "mcp_config": {
+          "transport": "sse",
+          "url": "http://127.0.0.1:18456/servers/memory/sse"
+        }
       }
+    ]
+  },
+  "deployment": {
+    "llm": {
+      "model": "claude-3-5-sonnet-20241022",
+      "temperature": 0.7,
+      "max_tokens": 4000,
+      "system_prompt": "You are a helpful research assistant with powerful research capabilities. You can:\n\n1. **Search the web** using DuckDuckGo to find information on any topic\n2. **Fetch detailed content** from specific URLs for in-depth analysis\n3. **Store and retrieve research findings** using persistent memory\n\nWhen conducting research:\n- Start with web searches to find relevant information and sources\n- Use the fetch tool to get detailed content from promising URLs\n- Store important findings in memory for future reference\n- Always cite your sources and provide links when possible\n- Synthesize information from multiple sources for comprehensive answers\n- Be critical and verify information from multiple sources when possible\n\nAlways explain your research process and provide clear, well-structured responses with proper citations."
+    },
+    "modal": {
+      "cpu": 1.0,
+      "memory": 2048,
+      "timeout": 300,
+      "keep_warm": 1,
+      "secrets": ["anthropic-api-key"]
+    },
+    "ui_config": {
+      "title": "Research Assistant",
+      "theme": "blue",
+      "show_tool_calls": true,
+      "streaming": true
     }
-  ],
-  "modal_config": {
-    "cpu": 1.0,
-    "memory": 2048,
-    "timeout": 300,
-    "keep_warm": 1,
-    "secrets": ["anthropic-api-key"]
-  },
-  "ui_config": {
-    "title": "Research Assistant",
-    "theme": "blue",
-    "show_tool_calls": true,
-    "streaming": true
-  },
-  "version": "1.0.0"
+  }
 }

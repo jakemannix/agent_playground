@@ -1,0 +1,53 @@
+{
+  "card": {
+    "name": "Basic Research Assistant",
+    "description": "AI assistant that can search the web, fetch web contents, and remember",
+    "url": "https://example.com/basic-research-assistant",
+    "version": "1.0.0",
+    "defaultInputModes": ["text/plain"],
+    "defaultOutputModes": ["text/plain"],
+    "capabilities": {
+      "streaming": true,
+      "pushNotifications": false,
+      "stateTransitionHistory": false
+    },
+    "skills": [
+      {
+        "id": "url_fetch",
+        "name": "URL Fetching",
+        "description": "Provides the ability to fetch the content of remote webpage URLs",
+        "tags": ["information", "mcp"],
+        "server_label": "url_fetch",
+        "server_url": "${FETCH_MCP_URL:-http://localhost:18456/servers/fetch/mcp}",
+        "require_approval": "always"
+      },
+      {
+        "id": "memory",
+        "name": "Memory Server", 
+        "description": "Memory storage for user preferences",
+        "tags": ["memory", "storage", "persistence"],
+        "server_label": "memory",
+        "server_url": "${MEMORY_MCP_URL:-http://localhost:18456/servers/memory/sse}",
+        "require_approval": "never"
+      },
+      {
+        "id": "search",
+        "name": "DuckDuckGo Search", 
+        "description": "Web Search via DuckDuckGo",
+        "tags": ["memory", "storage", "persistence"],
+        "server_label": "search",
+        "server_url": "${MEMORY_MCP_URL:-http://localhost:18456/servers/search/sse}",
+        "require_approval": "never"
+      }
+    ]
+  },
+  "deployment": {
+    "model": "gpt-4o-mini",
+    "temperature": 0.3,
+    "max_output_tokens": 2048,
+    "system_prompt": "You are a helpful weather assistant with enhanced capabilities. You can:\n1. Get current weather and forecasts using the weather MCP server\n2. Remember user preferences using the memory MCP server\n\nAlways provide clear, concise weather updates and remember user preferences for future interactions. If a user mentions a preference (like preferring Celsius over Fahrenheit), store it in memory.",
+    "modal_cpu": 1.0,
+    "modal_memory": 1024,
+    "modal_timeout": 120
+  }
+} 

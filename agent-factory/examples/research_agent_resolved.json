@@ -1,0 +1,178 @@
+{
+  "capabilities": {
+    "extensions": [
+      {
+        "description": "Agent supports MCP tool integration with input/output schemas",
+        "params": {
+          "version": "2025-06-18"
+        },
+        "required": false,
+        "uri": "https://modelcontextprotocol.io/mcp/1.0"
+      }
+    ],
+    "pushNotifications": false,
+    "stateTransitionHistory": true,
+    "streaming": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain",
+    "application/json"
+  ],
+  "description": "AI agent that helps with research tasks using web search, file operations, and memory storage",
+  "documentationUrl": null,
+  "iconUrl": null,
+  "name": "Research Assistant",
+  "provider": {
+    "organization": "Agent Factory Research Lab",
+    "url": "https://agent-factory.example.com"
+  },
+  "security": null,
+  "securitySchemes": null,
+  "skills": [
+    {
+      "description": "Search the web using DuckDuckGo to find information on any topic",
+      "examples": [
+        "Search for recent developments in AI",
+        "Find information about A2A protocol",
+        "Look up MCP documentation",
+        "Research current events in technology"
+      ],
+      "id": "mcp_search",
+      "inputModes": null,
+      "name": "Web Search",
+      "outputModes": null,
+      "tags": [
+        "research",
+        "web",
+        "search",
+        "information"
+      ],
+      "mcp_config": {
+        "transport": "sse",
+        "url": "http://127.0.0.1:18456/servers/search/sse"
+      },
+      "input_schema": null,
+      "output_schema": null,
+      "optional": false
+    },
+    {
+      "description": "Fetch and read content from specific URLs for detailed analysis",
+      "examples": [
+        "Fetch content from a specific research paper URL",
+        "Get detailed content from a documentation page",
+        "Retrieve full text from a news article",
+        "Extract content from a blog post"
+      ],
+      "id": "mcp_fetch",
+      "inputModes": null,
+      "name": "Web Content Fetcher",
+      "outputModes": null,
+      "tags": [
+        "research",
+        "web",
+        "fetch",
+        "content",
+        "analysis"
+      ],
+      "mcp_config": {
+        "transport": "sse",
+        "url": "http://127.0.0.1:18456/servers/fetch/sse"
+      },
+      "input_schema": {
+        "$defs": {
+          "ToolCall": {
+            "description": "Represents a request to call a tool.\n\nExample:\n\n    .. code-block:: python\n\n        {\n            \"name\": \"foo\",\n            \"args\": {\"a\": 1},\n            \"id\": \"123\"\n        }\n\n    This represents a request to call the tool named \"foo\" with arguments {\"a\": 1}\n    and an identifier of \"123\".",
+            "properties": {
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "args": {
+                "additionalProperties": true,
+                "title": "Args",
+                "type": "object"
+              },
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Id"
+              },
+              "type": {
+                "const": "tool_call",
+                "title": "Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "args",
+              "id"
+            ],
+            "title": "ToolCall",
+            "type": "object"
+          }
+        },
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          {
+            "$ref": "#/$defs/ToolCall"
+          }
+        ],
+        "title": "fetch_input"
+      },
+      "output_schema": {
+        "title": "fetch_output"
+      },
+      "optional": false
+    },
+    {
+      "description": "Store and retrieve research findings, notes, and insights across conversations",
+      "examples": [
+        "Remember key findings from previous research",
+        "Store important research notes and citations",
+        "Recall previous research topics and conclusions",
+        "Keep track of research progress and next steps"
+      ],
+      "id": "mcp_memory",
+      "inputModes": null,
+      "name": "Research Memory",
+      "outputModes": null,
+      "tags": [
+        "memory",
+        "storage",
+        "persistence",
+        "research",
+        "notes"
+      ],
+      "mcp_config": {
+        "transport": "sse",
+        "url": "http://127.0.0.1:18456/servers/memory/sse"
+      },
+      "input_schema": null,
+      "output_schema": null,
+      "optional": false
+    }
+  ],
+  "supportsAuthenticatedExtendedCard": null,
+  "url": "https://agent-factory.example.com/research-assistant",
+  "version": "1.0.0",
+  "agent_type": "react",
+  "ui_modes": [
+    "chat"
+  ]
+}

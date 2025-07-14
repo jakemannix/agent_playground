@@ -1,0 +1,38 @@
+{
+  "mcpServers": {
+    "fetch": {
+      "enabled": true,
+      "timeout": 60,
+      "command": "uvx",
+      "args": [
+        "mcp-server-fetch",
+        "--user-agent",
+        "MCP-Proxy/1.0"
+      ],
+      "transportType": "stdio"
+    },
+    "memory": {
+      "enabled": true,
+      "timeout": 60,
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ],
+      "transportType": "stdio"
+    },
+    "search": {
+      "enabled": true,
+      "timeout": 60,
+      "command": "npx",
+      "args": [
+        "-y",
+        "exa-mcp-server"
+      ],
+      "env": {
+         "EXA_API_KEY": "${EXA_API_KEY}"
+      },
+      "transportType": "stdio"
+    }
+  }
+}

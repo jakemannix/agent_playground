@@ -1,0 +1,41 @@
+{
+  "agent_card": {
+    "name": "Base Agent Template",
+    "description": "A base agent configuration template",
+    "url": "https://example.com/agent",
+    "version": "1.0.0",
+    "defaultInputModes": ["textMessage"],
+    "defaultOutputModes": ["textMessage"],
+    "capabilities": {
+      "streaming": true,
+      "pushNotifications": false,
+      "stateTransitionHistory": false,
+      "extensions": [
+        {
+          "uri": "https://modelcontextprotocol.io/mcp/1.0",
+          "description": "Agent supports MCP tool integration with input/output schemas",
+          "required": false,
+          "params": {"version": "2025-06-18"}
+        }
+      ]
+    },
+    "agent_type": "react",
+    "ui_modes": ["chat"],
+    "skills": []
+  },
+  "deployment": {
+    "llm": {
+      "model": "claude-3-5-sonnet-20241022",
+      "temperature": 0.7,
+      "max_tokens": null,
+      "system_prompt": "You are a helpful AI assistant."
+    },
+    "modal": {
+      "cpu": 1.0,
+      "memory": 2048,
+      "timeout": 300,
+      "keep_warm": 0,
+      "secrets": ["anthropic-api-key"]
+    }
+  }
+} 

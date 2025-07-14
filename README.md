@@ -22,8 +22,8 @@ cd agent-factory
 uv venv && source .venv/bin/activate
 uv pip install -e .
 cp dummy.env .env  # Edit with your API keys
-agent-factory example --output my_agent.json
-agent-factory test my_agent.json "Hello!"
+cp agent-factory/examples/configs/basic-example.json my_agent.json
+agent-factory my_agent.json --message "Hello!"
 ```
 
 See [agent-factory/README.md](./agent-factory/README.md) for detailed documentation.
@@ -76,6 +76,17 @@ This repository contains multiple related projects for agent development. Each s
 3. Make changes with tests
 4. Ensure all projects still work
 5. Submit a pull request
+
+## Desired Protocol Interaction
+
+Below is a spec-level walk-through showing how to:
+
+* Register and discover back-end agents & their typed skills
+* Generate the router logic automatically or allow an override map – without hand-editing prompts
+* Use the A2A task lifecycle so that a delegated agent remains “in charge” for follow-up user turns, yet control can always return to the router
+* Keep full observability with a BaseResult envelope (and even an optional BaseInput) that travels through every hop.
+
+
 
 ## License
 
