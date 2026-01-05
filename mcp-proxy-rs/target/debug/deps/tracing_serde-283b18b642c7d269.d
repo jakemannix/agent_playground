@@ -1,6 +1,0 @@
-/home/user/agent_playground/mcp-proxy-rs/target/debug/deps/tracing_serde-283b18b642c7d269.d: /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-serde-0.2.0/src/lib.rs /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-serde-0.2.0/src/fields.rs
-
-/home/user/agent_playground/mcp-proxy-rs/target/debug/deps/libtracing_serde-283b18b642c7d269.rmeta: /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-serde-0.2.0/src/lib.rs /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-serde-0.2.0/src/fields.rs
-
-/root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-serde-0.2.0/src/lib.rs:
-/root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-serde-0.2.0/src/fields.rs:
