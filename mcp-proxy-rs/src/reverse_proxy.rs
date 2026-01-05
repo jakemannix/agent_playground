@@ -66,6 +66,7 @@ fn setup_logging(debug: bool) {
     tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_target(false)
+        .with_writer(std::io::stderr)
         .init();
 }
 
@@ -197,7 +198,11 @@ async fn main() -> anyhow::Result<()> {
         let mut incoming_rx = sse_server.incoming_rx;
 
         // Spawn bridge for default server
+        // IMPORTANT: Move transport into the task to keep the child process alive
         tokio::spawn(async move {
+            // Keep transport alive to prevent the child process from being killed
+            let _transport = transport;
+
             loop {
                 tokio::select! {
                     Some(msg) = read_rx.recv() => {
@@ -238,7 +243,11 @@ async fn main() -> anyhow::Result<()> {
         let mut incoming_rx = sse_server.incoming_rx;
 
         // Spawn bridge for named server
+        // IMPORTANT: Move transport into the task to keep the child process alive
         tokio::spawn(async move {
+            // Keep transport alive to prevent the child process from being killed
+            let _transport = transport;
+
             loop {
                 tokio::select! {
                     Some(msg) = read_rx.recv() => {

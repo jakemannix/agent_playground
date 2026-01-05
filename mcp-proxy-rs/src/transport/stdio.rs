@@ -85,6 +85,9 @@ impl StdioTransport {
             Error::ProcessError(format!("Failed to spawn '{}': {}", params.command, e))
         })?;
 
+        debug!("Process spawned with PID: {:?}", child.id());
+
+        // Take stdin/stdout immediately before any async operations
         let stdin = child.stdin.take().ok_or_else(|| {
             Error::ProcessError("Failed to capture stdin".to_string())
         })?;
@@ -120,14 +123,26 @@ impl StdioTransport {
 
         // Spawn task to read from stdout
         tokio::spawn(async move {
-            let reader = BufReader::new(stdout);
-            let mut lines = reader.lines();
+            let mut reader = BufReader::new(stdout);
+            let mut line_buf = String::new();
 
-            while let Ok(Some(line)) = lines.next_line().await {
-                debug!("Read from stdio: {}", line);
-                if read_tx.send(line).await.is_err() {
-                    warn!("Read channel closed");
-                    break;
+            loop {
+                line_buf.clear();
+                match reader.read_line(&mut line_buf).await {
+                    Ok(0) => {
+                        break; // EOF
+                    }
+                    Ok(_) => {
+                        let line = line_buf.trim_end().to_string();
+                        debug!("Read from stdio: {}", line);
+                        if read_tx.send(line).await.is_err() {
+                            warn!("Read channel closed");
+                            break;
+                        }
+                    }
+                    Err(_) => {
+                        break;
+                    }
                 }
             }
             debug!("Stdout reader task ended");

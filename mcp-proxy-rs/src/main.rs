@@ -129,6 +129,7 @@ fn setup_logging(debug: bool, log_level: &str) {
     tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_target(false)
+        .with_writer(std::io::stderr)
         .init();
 }
 
@@ -231,11 +232,15 @@ async fn run_client_mode(args: &Args) -> anyhow::Result<()> {
             let stdio_server = StdioServer::new();
 
             // Run the proxy bridge
+            // - client_rx: read from stdin (local client sends requests)
+            // - client_tx: write to stdout (send responses to local client)
+            // - server_rx: read from SSE (remote server sends responses)
+            // - server_tx: write to SSE via POST (send requests to remote server)
             run_proxy_bridge(
-                stdio_server.read_rx,
-                sse_client.write_tx,
-                sse_client.read_rx,
-                stdio_server.write_tx,
+                stdio_server.read_rx,    // client_rx
+                stdio_server.write_tx,   // client_tx
+                sse_client.read_rx,      // server_rx
+                sse_client.write_tx,     // server_tx
             )
             .await?;
         }
@@ -248,11 +253,15 @@ async fn run_client_mode(args: &Args) -> anyhow::Result<()> {
             let stdio_server = StdioServer::new();
 
             // Run the proxy bridge
+            // - client_rx: read from stdin (local client sends requests)
+            // - client_tx: write to stdout (send responses to local client)
+            // - server_rx: read from HTTP (remote server sends responses)
+            // - server_tx: write to HTTP (send requests to remote server)
             run_proxy_bridge(
-                stdio_server.read_rx,
-                http_client_conn.write_tx,
-                http_client_conn.read_rx,
-                stdio_server.write_tx,
+                stdio_server.read_rx,       // client_rx
+                stdio_server.write_tx,      // client_tx
+                http_client_conn.read_rx,   // server_rx
+                http_client_conn.write_tx,  // server_tx
             )
             .await?;
         }
@@ -367,7 +376,11 @@ async fn run_server_mode(args: &Args) -> anyhow::Result<()> {
         let mut incoming_rx = sse_server.incoming_rx;
 
         // Spawn bridge for default server
+        // IMPORTANT: Move transport into the task to keep the child process alive
         tokio::spawn(async move {
+            // Keep transport alive to prevent the child process from being killed
+            let _transport = transport;
+
             loop {
                 tokio::select! {
                     Some(msg) = read_rx.recv() => {
@@ -403,7 +416,11 @@ async fn run_server_mode(args: &Args) -> anyhow::Result<()> {
         let mut incoming_rx = sse_server.incoming_rx;
 
         // Spawn bridge for named server
+        // IMPORTANT: Move transport into the task to keep the child process alive
         tokio::spawn(async move {
+            // Keep transport alive to prevent the child process from being killed
+            let _transport = transport;
+
             loop {
                 tokio::select! {
                     Some(msg) = read_rx.recv() => {

@@ -237,9 +237,10 @@ def stdio_proxy_server(rust_binaries_built, free_port) -> Generator[tuple[ProxyS
     sse_server = ProxyServer(sse_process, sse_port)
 
     # Now start the stdio proxy that connects to the SSE server
+    # URL is a positional argument, not a flag
     stdio_cmd = [
         str(MCP_PROXY_BIN),
-        "--sse-url", sse_server.sse_url,
+        sse_server.sse_url,  # Positional URL argument
     ]
 
     stdio_process = subprocess.Popen(
@@ -250,8 +251,8 @@ def stdio_proxy_server(rust_binaries_built, free_port) -> Generator[tuple[ProxyS
         env=env,
     )
 
-    # Give it a moment to connect
-    time.sleep(0.5)
+    # Give it time to connect to SSE and receive endpoint event
+    time.sleep(2.0)
 
     yield sse_server, stdio_process
 
