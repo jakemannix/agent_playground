@@ -1,0 +1,65 @@
+[package]
+name = "mcp-proxy"
+version = "0.1.0"
+edition = "2021"
+description = "A MCP server which proxies requests to a remote MCP server over streamable HTTP or SSE"
+license = "MIT"
+repository = "https://github.com/sparfenyuk/mcp-proxy"
+keywords = ["mcp", "proxy", "sse", "http", "ai"]
+categories = ["network-programming", "web-programming"]
+
+[[bin]]
+name = "mcp-proxy"
+path = "src/main.rs"
+
+[[bin]]
+name = "mcp-reverse-proxy"
+path = "src/reverse_proxy.rs"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full", "process"] }
+
+# CLI argument parsing
+clap = { version = "4", features = ["derive", "env"] }
+
+# HTTP client/server
+axum = { version = "0.7", features = ["macros"] }
+reqwest = { version = "0.12", features = ["json", "stream"] }
+reqwest-eventsource = "0.6"
+tower = { version = "0.4" }
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+hyper = { version = "1", features = ["full"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# SSE support
+async-stream = "0.3"
+futures = "0.3"
+tokio-stream = "0.1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Error handling
+thiserror = "1"
+anyhow = "1"
+
+# Utilities
+uuid = { version = "1", features = ["v4"] }
+url = "2"
+bytes = "1"
+async-trait = "0.1"
+pin-project-lite = "0.2"
+
+[dev-dependencies]
+tokio-test = "0.4"
+tempfile = "3"
+
+[profile.release]
+lto = true
+strip = true
+opt-level = 3
