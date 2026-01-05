@@ -51,6 +51,7 @@ impl StdioServerParams {
 }
 
 /// Transport for communicating with stdio-based MCP servers
+#[derive(Debug)]
 pub struct StdioTransport {
     child: Child,
     /// Channel for receiving messages from the child process
@@ -230,5 +231,171 @@ impl StdioServer {
 impl Default for StdioServer {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_stdio_server_params_new() {
+        let params = StdioServerParams::new("python");
+        assert_eq!(params.command, "python");
+        assert!(params.args.is_empty());
+        assert!(params.env.is_empty());
+        assert!(params.cwd.is_none());
+    }
+
+    #[test]
+    fn test_stdio_server_params_builder() {
+        let mut env = HashMap::new();
+        env.insert("API_KEY".to_string(), "secret".to_string());
+
+        let params = StdioServerParams::new("node")
+            .with_args(vec!["server.js".to_string(), "--port".to_string(), "8080".to_string()])
+            .with_env(env)
+            .with_cwd("/app");
+
+        assert_eq!(params.command, "node");
+        assert_eq!(params.args, vec!["server.js", "--port", "8080"]);
+        assert_eq!(params.env.get("API_KEY"), Some(&"secret".to_string()));
+        assert_eq!(params.cwd, Some("/app".to_string()));
+    }
+
+    #[test]
+    fn test_stdio_server_params_clone() {
+        let params = StdioServerParams::new("python")
+            .with_args(vec!["script.py".to_string()]);
+
+        let cloned = params.clone();
+        assert_eq!(params.command, cloned.command);
+        assert_eq!(params.args, cloned.args);
+    }
+
+    #[tokio::test]
+    async fn test_channel_communication() {
+        // Test that mpsc channels work correctly for message passing
+        let (tx, mut rx) = mpsc::channel::<String>(10);
+
+        tx.send("message1".to_string()).await.unwrap();
+        tx.send("message2".to_string()).await.unwrap();
+
+        assert_eq!(rx.recv().await, Some("message1".to_string()));
+        assert_eq!(rx.recv().await, Some("message2".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_channel_close_detection() {
+        let (tx, mut rx) = mpsc::channel::<String>(10);
+
+        tx.send("test".to_string()).await.unwrap();
+        drop(tx); // Close the sender
+
+        assert_eq!(rx.recv().await, Some("test".to_string()));
+        assert_eq!(rx.recv().await, None); // Channel closed
+    }
+
+    #[tokio::test]
+    async fn test_bidirectional_channels() {
+        // Simulate bidirectional communication like in a proxy
+        let (client_tx, mut server_rx) = mpsc::channel::<String>(10);
+        let (server_tx, mut client_rx) = mpsc::channel::<String>(10);
+
+        // Client sends request
+        client_tx.send(r#"{"jsonrpc":"2.0","id":1,"method":"ping"}"#.to_string()).await.unwrap();
+
+        // Server receives and responds
+        let request = server_rx.recv().await.unwrap();
+        assert!(request.contains("ping"));
+
+        server_tx.send(r#"{"jsonrpc":"2.0","id":1,"result":{}}"#.to_string()).await.unwrap();
+
+        // Client receives response
+        let response = client_rx.recv().await.unwrap();
+        assert!(response.contains("result"));
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_message_handling() {
+        let (tx, mut rx) = mpsc::channel::<String>(100);
+
+        // Spawn multiple senders
+        let tx1 = tx.clone();
+        let tx2 = tx.clone();
+
+        let h1 = tokio::spawn(async move {
+            for i in 0..10 {
+                tx1.send(format!("sender1-{}", i)).await.unwrap();
+            }
+        });
+
+        let h2 = tokio::spawn(async move {
+            for i in 0..10 {
+                tx2.send(format!("sender2-{}", i)).await.unwrap();
+            }
+        });
+
+        h1.await.unwrap();
+        h2.await.unwrap();
+        drop(tx);
+
+        let mut count = 0;
+        while let Some(_msg) = rx.recv().await {
+            count += 1;
+        }
+
+        assert_eq!(count, 20);
+    }
+
+    #[tokio::test]
+    async fn test_spawn_nonexistent_command() {
+        let params = StdioServerParams::new("nonexistent_command_12345");
+        let result = StdioTransport::spawn(&params).await;
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, crate::error::Error::ProcessError(_)));
+    }
+
+    #[tokio::test]
+    async fn test_spawn_echo_command() {
+        // Test spawning a simple command that exits immediately
+        let params = StdioServerParams::new("echo")
+            .with_args(vec!["hello".to_string()]);
+
+        let result = StdioTransport::spawn(&params).await;
+        assert!(result.is_ok());
+
+        let mut transport = result.unwrap();
+
+        // The echo command outputs and exits quickly
+        // Give it a moment to complete
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+        // Check that we can take channels
+        let channels = transport.take_channels();
+        assert!(channels.is_some());
+
+        // Second take should return None
+        let channels2 = transport.take_channels();
+        assert!(channels2.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_transport_take_channels_once() {
+        let params = StdioServerParams::new("cat");
+
+        let result = StdioTransport::spawn(&params).await;
+        // cat might not be available on all systems
+        if let Ok(mut transport) = result {
+            // First take succeeds
+            let channels = transport.take_channels();
+            assert!(channels.is_some());
+
+            // Second take returns None
+            let channels2 = transport.take_channels();
+            assert!(channels2.is_none());
+        }
     }
 }

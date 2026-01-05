@@ -280,3 +280,244 @@ async fn post_message_handler(
         .body("Accepted".to_string())
         .unwrap()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sse_server_creation() {
+        let server = SseServer::new();
+        let state = server.state();
+
+        // Verify session ID is a valid UUID
+        assert!(!state.session_id.is_empty());
+        assert!(uuid::Uuid::parse_str(&state.session_id).is_ok());
+    }
+
+    #[test]
+    fn test_sse_server_state_clone() {
+        let server = SseServer::new();
+        let state1 = server.state();
+        let state2 = state1.clone();
+
+        assert_eq!(state1.session_id, state2.session_id);
+    }
+
+    #[tokio::test]
+    async fn test_broadcast_channel_subscription() {
+        let (tx, _rx) = broadcast::channel::<String>(100);
+
+        // Subscribe multiple receivers
+        let mut rx1 = tx.subscribe();
+        let mut rx2 = tx.subscribe();
+
+        // Send a message
+        tx.send("test message".to_string()).unwrap();
+
+        // Both receivers should get the message
+        assert_eq!(rx1.recv().await.unwrap(), "test message");
+        assert_eq!(rx2.recv().await.unwrap(), "test message");
+    }
+
+    #[tokio::test]
+    async fn test_broadcast_multiple_messages() {
+        let (tx, _rx) = broadcast::channel::<String>(100);
+        let mut rx = tx.subscribe();
+
+        tx.send("message1".to_string()).unwrap();
+        tx.send("message2".to_string()).unwrap();
+        tx.send("message3".to_string()).unwrap();
+
+        assert_eq!(rx.recv().await.unwrap(), "message1");
+        assert_eq!(rx.recv().await.unwrap(), "message2");
+        assert_eq!(rx.recv().await.unwrap(), "message3");
+    }
+
+    #[tokio::test]
+    async fn test_sse_server_send() {
+        let server = SseServer::new();
+        let state = server.state();
+        let mut rx = state.message_tx.subscribe();
+
+        // Send through the server
+        server.send("test".to_string()).unwrap();
+
+        // Should receive on subscriber
+        assert_eq!(rx.recv().await.unwrap(), "test");
+    }
+
+    #[tokio::test]
+    async fn test_sse_incoming_messages() {
+        let mut server = SseServer::new();
+        let state = server.state();
+
+        // Send an incoming message
+        state.incoming_tx.send("incoming test".to_string()).await.unwrap();
+
+        // Should be received on server's incoming_rx
+        let msg = server.incoming_rx.recv().await.unwrap();
+        assert_eq!(msg, "incoming test");
+    }
+
+    #[tokio::test]
+    async fn test_sse_bidirectional_flow() {
+        let mut server = SseServer::new();
+        let state = server.state();
+        let mut broadcast_rx = state.message_tx.subscribe();
+
+        // Simulate client sending a message (POST)
+        state.incoming_tx.send(r#"{"jsonrpc":"2.0","id":1,"method":"ping"}"#.to_string()).await.unwrap();
+
+        // Server receives it
+        let request = server.incoming_rx.recv().await.unwrap();
+        assert!(request.contains("ping"));
+
+        // Server broadcasts response
+        server.send(r#"{"jsonrpc":"2.0","id":1,"result":{}}"#.to_string()).unwrap();
+
+        // Client (via SSE) receives response
+        let response = broadcast_rx.recv().await.unwrap();
+        assert!(response.contains("result"));
+    }
+
+    #[tokio::test]
+    async fn test_multiple_sse_clients() {
+        let server = SseServer::new();
+        let state = server.state();
+
+        // Multiple clients subscribe
+        let mut client1 = state.message_tx.subscribe();
+        let mut client2 = state.message_tx.subscribe();
+        let mut client3 = state.message_tx.subscribe();
+
+        // Server broadcasts a message
+        server.send("broadcast to all".to_string()).unwrap();
+
+        // All clients receive it
+        assert_eq!(client1.recv().await.unwrap(), "broadcast to all");
+        assert_eq!(client2.recv().await.unwrap(), "broadcast to all");
+        assert_eq!(client3.recv().await.unwrap(), "broadcast to all");
+    }
+
+    #[tokio::test]
+    async fn test_sse_stream_json_messages() {
+        let server = SseServer::new();
+        let state = server.state();
+        let mut rx = state.message_tx.subscribe();
+
+        // Send various JSON-RPC messages
+        let messages = vec![
+            r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#,
+            r#"{"jsonrpc":"2.0","id":2,"method":"tools/list"}"#,
+            r#"{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"test"}}"#,
+        ];
+
+        for msg in &messages {
+            server.send(msg.to_string()).unwrap();
+        }
+
+        for expected in messages {
+            let received = rx.recv().await.unwrap();
+            assert_eq!(received, expected);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_late_subscriber() {
+        let server = SseServer::new();
+        let state = server.state();
+
+        // Send message before subscriber exists - this fails because broadcast
+        // channels require at least one subscriber
+        let result = server.send("early message".to_string());
+        assert!(result.is_err()); // No subscribers, so send fails
+
+        // Subscribe after the failed message
+        let mut rx = state.message_tx.subscribe();
+
+        // Send another message - now it succeeds
+        server.send("late message".to_string()).unwrap();
+
+        // Late subscriber only sees the new message
+        assert_eq!(rx.recv().await.unwrap(), "late message");
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_sends() {
+        let server = SseServer::new();
+        let state = server.state();
+        let mut rx = state.message_tx.subscribe();
+
+        // Spawn multiple concurrent senders
+        let server1 = SseServer {
+            state: state.clone(),
+            incoming_rx: mpsc::channel(1).1,
+        };
+        let server2 = SseServer {
+            state: state.clone(),
+            incoming_rx: mpsc::channel(1).1,
+        };
+
+        let h1 = tokio::spawn(async move {
+            for i in 0..5 {
+                server1.send(format!("s1-{}", i)).unwrap();
+            }
+        });
+
+        let h2 = tokio::spawn(async move {
+            for i in 0..5 {
+                server2.send(format!("s2-{}", i)).unwrap();
+            }
+        });
+
+        h1.await.unwrap();
+        h2.await.unwrap();
+
+        // Should receive all 10 messages (plus our original server's messages if any)
+        let mut count = 0;
+        while count < 10 {
+            let _ = rx.recv().await.unwrap();
+            count += 1;
+        }
+        assert_eq!(count, 10);
+    }
+
+    #[test]
+    fn test_sse_server_routes_creation() {
+        let server = SseServer::new();
+        let state = server.state();
+
+        // Just verify routes can be created without panicking
+        let _routes = SseServer::routes(state);
+    }
+
+    #[tokio::test]
+    async fn test_channel_backpressure() {
+        // Test with a small channel to simulate backpressure
+        let (tx, mut rx) = mpsc::channel::<String>(2);
+
+        // Fill the channel
+        tx.send("msg1".to_string()).await.unwrap();
+        tx.send("msg2".to_string()).await.unwrap();
+
+        // Channel is now full, send would block
+        // Use try_send to test
+        let result = tx.try_send("msg3".to_string());
+        assert!(result.is_err()); // Channel full
+
+        // Drain one message
+        let _ = rx.recv().await;
+
+        // Now we can send again
+        tx.send("msg3".to_string()).await.unwrap();
+    }
+
+    #[test]
+    fn test_session_id_uniqueness() {
+        let server1 = SseServer::new();
+        let server2 = SseServer::new();
+
+        assert_ne!(server1.state().session_id, server2.state().session_id);
+    }
+}
