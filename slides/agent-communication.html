@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent-to-Agent Communication</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/theme/night.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/monokai.min.css">
+    <style>
+        .reveal h1, .reveal h2, .reveal h3 { text-transform: none; }
+        .reveal pre { font-size: 0.55em; width: 100%; }
+        .reveal code { font-size: 0.9em; }
+        .reveal ul { font-size: 0.85em; }
+        .reveal .small { font-size: 0.7em; }
+        .reveal .highlight { color: #42affa; }
+        .reveal .warning { color: #ff6b6b; }
+        .reveal .success { color: #69db7c; }
+        .two-column { display: flex; gap: 40px; }
+        .two-column > div { flex: 1; }
+        .diagram {
+            background: #1a1a2e;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: monospace;
+            font-size: 0.65em;
+            line-height: 1.4;
+        }
+        .vs-table { width: 100%; font-size: 0.7em; }
+        .vs-table td, .vs-table th { padding: 10px; border: 1px solid #444; }
+        .vs-table th { background: #333; }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+            <!-- Title Slide -->
+            <section>
+                <h1>Agent-to-Agent Communication</h1>
+                <h3>How AI Agents Talk to Each Other</h3>
+                <p class="small">From MCP Tools to A2A Protocol to Stateful Agents</p>
+            </section>
+
+            <!-- Overview -->
+            <section>
+                <h2>Today's Journey</h2>
+                <ol>
+                    <li>The Challenge: Why Agent Communication?</li>
+                    <li>MCP: Agent-to-Tool Protocol</li>
+                    <li>A2A: Agent-to-Agent Protocol (Google)</li>
+                    <li>Letta: Stateful Agents with Memory</li>
+                    <li>Comparison & When to Use What</li>
+                    <li>Hands-On Examples</li>
+                </ol>
+            </section>
+
+            <!-- Section 1: The Challenge -->
+            <section>
+                <section>
+                    <h2>The Challenge</h2>
+                    <h3 class="highlight">Why Do Agents Need to Communicate?</h3>
+                </section>
+
+                <section>
+                    <h3>Single Agent Limitations</h3>
+                    <div class="diagram">
+┌─────────────────────────────────────┐
+│           Single Agent              │
+│  ┌─────────────────────────────┐   │
+│  │     Context Window          │   │
+│  │   (Limited: ~200K tokens)   │   │
+│  └─────────────────────────────┘   │
+│                                     │
+│  • One set of tools                 │
+│  • One model/personality            │
+│  • Stateless between sessions       │
+│  • No specialization                │
+└─────────────────────────────────────┘
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Multi-Agent Benefits</h3>
+                    <ul>
+                        <li><span class="highlight">Specialization</span> - Agents focus on what they do best</li>
+                        <li><span class="highlight">Scalability</span> - Distribute work across agents</li>
+                        <li><span class="highlight">Modularity</span> - Swap/upgrade agents independently</li>
+                        <li><span class="highlight">Resilience</span> - Failure isolation</li>
+                        <li><span class="highlight">Security</span> - Principle of least privilege</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>The Communication Problem</h3>
+                    <div class="diagram">
+                    How do agents...
+
+  ┌─────────┐      ???      ┌─────────┐
+  │ Agent A │ ────────────► │ Agent B │
+  └─────────┘               └─────────┘
+
+  • Discover each other?
+  • Describe their capabilities?
+  • Exchange structured data?
+  • Coordinate long-running tasks?
+  • Share state/memory?
+                    </div>
+                </section>
+            </section>
+
+            <!-- Section 2: MCP -->
+            <section>
+                <section>
+                    <h2>MCP: Model Context Protocol</h2>
+                    <h3 class="highlight">Agent-to-Tool Communication</h3>
+                    <p class="small">Anthropic's open standard</p>
+                </section>
+
+                <section>
+                    <h3>What MCP Does</h3>
+                    <div class="diagram">
+┌─────────────────────────────────────────────────┐
+│                    AGENT                         │
+│  ┌───────────────────────────────────────────┐  │
+│  │              LLM (Claude)                  │  │
+│  └───────────────────────────────────────────┘  │
+│                      │                           │
+│                 MCP Client                       │
+└──────────────────────┼──────────────────────────┘
+                       │ MCP Protocol
+         ┌─────────────┼─────────────┐
+         ▼             ▼             ▼
+    ┌─────────┐  ┌─────────┐  ┌─────────┐
+    │  fetch  │  │ memory  │  │ search  │
+    │ server  │  │ server  │  │ server  │
+    └─────────┘  └─────────┘  └─────────┘
+
+    Tools exposed to agent via standard protocol
+                    </div>
+                </section>
+
+                <section>
+                    <h3>MCP Tool Definition</h3>
+                    <pre><code class="json">{
+  "name": "get_weather",
+  "description": "Get current weather for a location",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "location": {
+        "type": "string",
+        "description": "City name"
+      }
+    },
+    "required": ["location"]
+  }
+}</code></pre>
+                </section>
+
+                <section>
+                    <h3>MCP Transports</h3>
+                    <ul>
+                        <li><span class="highlight">stdio</span> - Local process communication</li>
+                        <li><span class="highlight">SSE</span> - Server-Sent Events over HTTP</li>
+                        <li><span class="highlight">Streamable HTTP</span> - Direct HTTP calls</li>
+                    </ul>
+                    <pre><code class="json">{
+  "transport": "streamable_http",
+  "url": "http://localhost:8123/mcp"
+}</code></pre>
+                </section>
+
+                <section>
+                    <h3>MCP Limitation</h3>
+                    <div class="diagram">
+    MCP = Agent ↔ Tool
+
+    ┌─────────┐          ┌──────────┐
+    │  Agent  │ ───────► │   Tool   │
+    └─────────┘          └──────────┘
+         │
+         │  What about...
+         ▼
+    ┌─────────┐          ┌─────────┐
+    │  Agent  │ ───???─► │  Agent  │
+    └─────────┘          └─────────┘
+
+    <span class="warning">MCP doesn't define agent-to-agent communication!</span>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Section 3: A2A Protocol -->
+            <section>
+                <section>
+                    <h2>A2A: Agent-to-Agent Protocol</h2>
+                    <h3 class="highlight">Google's Open Standard</h3>
+                    <p class="small">Released April 2025, now under Linux Foundation</p>
+                </section>
+
+                <section>
+                    <h3>A2A Design Principles</h3>
+                    <ul>
+                        <li><span class="highlight">Embrace Agentic Capabilities</span><br>
+                            <span class="small">Agents collaborate naturally, even without shared memory</span></li>
+                        <li><span class="highlight">Built on Existing Standards</span><br>
+                            <span class="small">HTTP, SSE, JSON-RPC, gRPC</span></li>
+                        <li><span class="highlight">Secure by Default</span><br>
+                            <span class="small">Enterprise-grade auth & authorization</span></li>
+                        <li><span class="highlight">Long-Running Task Support</span><br>
+                            <span class="small">From quick tasks to hours-long workflows</span></li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>A2A + MCP Together</h3>
+                    <div class="diagram">
+┌───────────────────────────────────────────────────────┐
+│                  A2A Protocol Layer                    │
+│           (Agent-to-Agent Communication)               │
+│                                                        │
+│  ┌─────────────┐    A2A     ┌─────────────┐          │
+│  │   Agent A   │◄──────────►│   Agent B   │          │
+│  └──────┬──────┘            └──────┬──────┘          │
+│         │                          │                  │
+└─────────┼──────────────────────────┼─────────────────┘
+          │ MCP                      │ MCP
+          ▼                          ▼
+    ┌───────────┐              ┌───────────┐
+    │   Tools   │              │   Tools   │
+    └───────────┘              └───────────┘
+
+    <span class="success">MCP = Vertical (tools)</span>    <span class="highlight">A2A = Horizontal (agents)</span>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Agent Card: Discovery</h3>
+                    <pre><code class="json">// GET /.well-known/agent.json
+{
+  "name": "Research Assistant",
+  "description": "Searches and summarizes information",
+  "version": "1.0.0",
+  "skills": [
+    {
+      "id": "web_search",
+      "name": "Web Search",
+      "description": "Search the internet",
+      "tags": ["research", "search"],
+      "inputSchema": { "type": "object", ... },
+      "outputSchema": { "type": "object", ... }
+    }
+  ],
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false
+  }
+}</code></pre>
+                </section>
+
+                <section>
+                    <h3>A2A Task Lifecycle</h3>
+                    <div class="diagram">
+Client Agent                              Remote Agent
+     │                                          │
+     │  1. POST /tasks/send                     │
+     │     {message: "Research AI trends"}      │
+     │ ────────────────────────────────────────►│
+     │                                          │
+     │  2. Task Created (status: working)       │
+     │◄──────────────────────────────────────── │
+     │                                          │
+     │  3. GET /tasks/{id} or subscribe SSE    │
+     │ ────────────────────────────────────────►│
+     │                                          │
+     │  4. Status updates, streaming results    │
+     │◄──────────────────────────────────────── │
+     │                                          │
+     │  5. Task Complete (status: completed)    │
+     │◄──────────────────────────────────────── │
+                    </div>
+                </section>
+
+                <section>
+                    <h3>A2A Ecosystem (150+ Partners)</h3>
+                    <ul>
+                        <li><span class="highlight">Tech Giants</span>: Google, Salesforce, SAP, ServiceNow</li>
+                        <li><span class="highlight">AI Companies</span>: LangChain, Cohere, MongoDB</li>
+                        <li><span class="highlight">Enterprises</span>: Atlassian, Box, PayPal, Workday</li>
+                        <li><span class="highlight">Consultants</span>: Accenture, Deloitte, McKinsey</li>
+                    </ul>
+                    <p class="small">Version 0.3 (July 2025): Added gRPC, signed security cards</p>
+                </section>
+            </section>
+
+            <!-- Section 4: Letta -->
+            <section>
+                <section>
+                    <h2>Letta: Stateful Agents</h2>
+                    <h3 class="highlight">Memory-First Architecture</h3>
+                    <p class="small">From the MemGPT research paper</p>
+                </section>
+
+                <section>
+                    <h3>The Stateless Problem</h3>
+                    <div class="diagram">
+Traditional LLM API:
+
+  Request 1        Request 2        Request 3
+      │                │                │
+      ▼                ▼                ▼
+  ┌───────┐        ┌───────┐        ┌───────┐
+  │  LLM  │        │  LLM  │        │  LLM  │
+  └───────┘        └───────┘        └───────┘
+
+  <span class="warning">Each request starts from scratch!</span>
+  <span class="warning">No learning, no memory, no growth</span>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Letta's Stateful Architecture</h3>
+                    <div class="diagram">
+┌──────────────────────────────────────────────────────┐
+│                   LETTA AGENT                         │
+│                                                       │
+│  ┌─────────────────────────────────────────────────┐ │
+│  │              In-Context Memory                   │ │
+│  │   (Persistent across all interactions)          │ │
+│  └─────────────────────────────────────────────────┘ │
+│                         │                            │
+│  ┌──────────────────────┼──────────────────────────┐ │
+│  │                 Memory Tools                     │ │
+│  │  ┌─────────┐  ┌──────────┐  ┌─────────────────┐ │ │
+│  │  │  Read   │  │  Write   │  │     Search      │ │ │
+│  │  │ Memory  │  │  Memory  │  │ Archival Memory │ │ │
+│  │  └─────────┘  └──────────┘  └─────────────────┘ │ │
+│  └─────────────────────────────────────────────────┘ │
+│                                                       │
+│  ┌─────────────────────────────────────────────────┐ │
+│  │           External Memory (Vector DB)           │ │
+│  │      Conversation History + Archival Store      │ │
+│  └─────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────┘
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Memory Types in Letta</h3>
+                    <ul>
+                        <li><span class="highlight">Core Memory</span> - Always in context
+                            <ul>
+                                <li class="small">User persona, agent persona, key facts</li>
+                            </ul>
+                        </li>
+                        <li><span class="highlight">Recall Memory</span> - Conversation history
+                            <ul>
+                                <li class="small">Searchable, automatically managed</li>
+                            </ul>
+                        </li>
+                        <li><span class="highlight">Archival Memory</span> - Long-term storage
+                            <ul>
+                                <li class="small">Vector DB for semantic search</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Agent Self-Manages Memory</h3>
+                    <pre><code class="python"># The agent decides what to remember!
+
+# Agent sees user preference and stores it
+agent.send_message("I prefer dark mode interfaces")
+
+# Internally, agent calls:
+archival_memory_insert(
+    "User prefers dark mode for interfaces"
+)
+
+# Later, when building UI:
+results = archival_memory_search("user preferences")
+# Returns: ["User prefers dark mode for interfaces"]</code></pre>
+                </section>
+
+                <section>
+                    <h3>Multi-Agent in Letta</h3>
+                    <div class="diagram">
+┌─────────────────────────────────────────────────────┐
+│              Letta Multi-Agent System               │
+│                                                     │
+│  ┌─────────────────────────────────────────────┐   │
+│  │           Shared Memory Layer                │   │
+│  │  (Agents can share memory blocks)           │   │
+│  └─────────────────────────────────────────────┘   │
+│          │              │              │            │
+│          ▼              ▼              ▼            │
+│    ┌─────────┐    ┌─────────┐    ┌─────────┐      │
+│    │ Agent A │    │ Agent B │    │ Agent C │      │
+│    │ (coder) │    │(reviewer)│   │(deployer)│     │
+│    └─────────┘    └─────────┘    └─────────┘      │
+│                                                     │
+│    Built-in mechanisms for communication            │
+│    and state sharing between agents                 │
+└─────────────────────────────────────────────────────┘
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Letta Agent Loop</h3>
+                    <pre><code class="python"># Each step is checkpointed to database!
+
+while not done:
+    # 1. Agent reasons about the task
+    response = llm.generate(context + memory)
+
+    # 2. Agent may use tools (including memory tools)
+    if response.tool_calls:
+        results = execute_tools(response.tool_calls)
+
+    # 3. State is persisted (checkpoint)
+    save_agent_state(agent_id, state)
+
+    # 4. Continue until task complete
+    done = response.is_complete</code></pre>
+                </section>
+            </section>
+
+            <!-- Section 5: Comparison -->
+            <section>
+                <section>
+                    <h2>Comparison</h2>
+                    <h3 class="highlight">When to Use What?</h3>
+                </section>
+
+                <section>
+                    <h3>Protocol Comparison</h3>
+                    <table class="vs-table">
+                        <tr>
+                            <th>Aspect</th>
+                            <th>MCP</th>
+                            <th>A2A</th>
+                            <th>Letta</th>
+                        </tr>
+                        <tr>
+                            <td>Focus</td>
+                            <td>Agent ↔ Tool</td>
+                            <td>Agent ↔ Agent</td>
+                            <td>Agent State</td>
+                        </tr>
+                        <tr>
+                            <td>Memory</td>
+                            <td>None</td>
+                            <td>Optional</td>
+                            <td>Core Feature</td>
+                        </tr>
+                        <tr>
+                            <td>Discovery</td>
+                            <td>Tool schemas</td>
+                            <td>Agent cards</td>
+                            <td>API</td>
+                        </tr>
+                        <tr>
+                            <td>Complexity</td>
+                            <td>Low</td>
+                            <td>Medium</td>
+                            <td>Medium</td>
+                        </tr>
+                        <tr>
+                            <td>Best For</td>
+                            <td>Tool integration</td>
+                            <td>Agent orchestration</td>
+                            <td>Persistent agents</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h3>Use MCP When...</h3>
+                    <ul>
+                        <li>You need to connect an agent to external tools</li>
+                        <li>Tools are the primary integration point</li>
+                        <li>You want a simple, standardized tool interface</li>
+                        <li>Building within a single agent context</li>
+                    </ul>
+                    <pre><code class="json">// Example: Weather tool via MCP
+{
+  "transport": "streamable_http",
+  "url": "http://localhost:8123/mcp"
+}</code></pre>
+                </section>
+
+                <section>
+                    <h3>Use A2A When...</h3>
+                    <ul>
+                        <li>Multiple specialized agents need to collaborate</li>
+                        <li>Cross-organization agent communication</li>
+                        <li>Long-running, complex workflows</li>
+                        <li>You need enterprise security/auth</li>
+                        <li>Building an agent ecosystem</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Use Letta When...</h3>
+                    <ul>
+                        <li>Agent needs to learn and remember over time</li>
+                        <li>Conversations span days/weeks/months</li>
+                        <li>Personalization is important</li>
+                        <li>Agent should improve through experience</li>
+                        <li>You need reliable state persistence</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Combining Approaches</h3>
+                    <div class="diagram">
+┌────────────────────────────────────────────────────────┐
+│              Production Agent System                    │
+│                                                         │
+│   ┌─────────────────────────────────────────────────┐  │
+│   │         A2A: Agent Discovery & Routing          │  │
+│   └─────────────────────────────────────────────────┘  │
+│                          │                              │
+│        ┌─────────────────┼─────────────────┐           │
+│        ▼                 ▼                 ▼           │
+│   ┌─────────┐       ┌─────────┐       ┌─────────┐     │
+│   │ Letta   │       │ Letta   │       │ Letta   │     │
+│   │ Agent A │       │ Agent B │       │ Agent C │     │
+│   │(stateful)│      │(stateful)│      │(stateful)│    │
+│   └────┬────┘       └────┬────┘       └────┬────┘     │
+│        │                 │                 │           │
+│        │ MCP             │ MCP             │ MCP       │
+│        ▼                 ▼                 ▼           │
+│   ┌─────────┐       ┌─────────┐       ┌─────────┐     │
+│   │  Tools  │       │  Tools  │       │  Tools  │     │
+│   └─────────┘       └─────────┘       └─────────┘     │
+└────────────────────────────────────────────────────────┘
+                    </div>
+                </section>
+            </section>
+
+            <!-- Section 6: Practical Examples -->
+            <section>
+                <section>
+                    <h2>Hands-On Examples</h2>
+                    <h3 class="highlight">From This Codebase</h3>
+                </section>
+
+                <section>
+                    <h3>Agent Configuration (A2A Style)</h3>
+                    <pre><code class="json">// agent-factory/examples/research_agent.json
+{
+  "agent_card": {
+    "name": "Research Assistant",
+    "version": "1.0.0",
+    "skills": [
+      {
+        "id": "mcp_search",
+        "name": "Web Search",
+        "tags": ["research", "web", "search"],
+        "mcp_config": {
+          "transport": "sse",
+          "url": "http://127.0.0.1:18456/sse"
+        }
+      }
+    ],
+    "capabilities": {
+      "extensions": [{
+        "uri": "https://modelcontextprotocol.io/mcp/1.0"
+      }]
+    }
+  }
+}</code></pre>
+                </section>
+
+                <section>
+                    <h3>Discovery Endpoint</h3>
+                    <pre><code class="python"># agent-factory/src/agent_factory/http/api.py
+
+@app.get("/.well-known/agent.json")
+async def agent_card():
+    """
+    Get A2A-compatible agent card.
+
+    Other agents can discover this agent's
+    capabilities by fetching this endpoint.
+    """
+    return await runner.get_agent_card()</code></pre>
+                </section>
+
+                <section>
+                    <h3>MCP Tool Loading</h3>
+                    <pre><code class="python"># agent-factory/src/agent_factory/harness.py
+
+async def create_mcp_tools(skills: List[MCPSkill]):
+    """Load tools from MCP servers."""
+    tools = []
+    for skill in skills:
+        # Connect to MCP server
+        client = MultiServerMCPClient({
+            skill.id: skill.mcp_config
+        })
+        # Get tools with auto-extracted schemas
+        skill_tools = await client.get_tools()
+        tools.extend(skill_tools)
+    return tools</code></pre>
+                </section>
+
+                <section>
+                    <h3>Running an Agent</h3>
+                    <pre><code class="bash"># Start MCP proxy server (terminal 1)
+cd tools
+python -m mcp_proxy \
+    --port=18456 \
+    --named-server-config=servers_config.json
+
+# Start weather MCP server (terminal 2)
+python weather.py --port 8123
+
+# Run the agent (terminal 3)
+cd agent-factory
+agent-factory examples/weather_agent.json \
+    --message "What's the weather in Seattle?"</code></pre>
+                </section>
+
+                <section>
+                    <h3>Future: Supervisor Pattern</h3>
+                    <pre><code class="python"># Planned supervisor agent (not yet implemented)
+from langgraph.prebuilt import create_supervisor
+
+supervisor = create_supervisor(
+    agents=[
+        research_agent,
+        coding_agent,
+        review_agent
+    ],
+    model=llm,
+    # Supervisor decides which agent handles each task
+)
+
+# Supervisor routes to specialized agents
+result = await supervisor.invoke({
+    "messages": [
+        {"role": "user", "content": "Build a weather app"}
+    ]
+})</code></pre>
+                </section>
+            </section>
+
+            <!-- Section 7: Architecture Patterns -->
+            <section>
+                <section>
+                    <h2>Architecture Patterns</h2>
+                    <h3 class="highlight">Common Multi-Agent Designs</h3>
+                </section>
+
+                <section>
+                    <h3>Pattern 1: Hub and Spoke</h3>
+                    <div class="diagram">
+                    ┌─────────────┐
+                    │  Router /   │
+                    │ Supervisor  │
+                    └──────┬──────┘
+                           │
+         ┌─────────────────┼─────────────────┐
+         │                 │                 │
+         ▼                 ▼                 ▼
+    ┌─────────┐       ┌─────────┐       ┌─────────┐
+    │ Search  │       │  Code   │       │  Data   │
+    │  Agent  │       │  Agent  │       │  Agent  │
+    └─────────┘       └─────────┘       └─────────┘
+
+    Router receives all requests and delegates
+    to specialized agents based on task type
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Pattern 2: Pipeline</h3>
+                    <div class="diagram">
+    ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐
+    │ Intake  │───►│ Process │───►│ Review  │───►│ Output  │
+    │  Agent  │    │  Agent  │    │  Agent  │    │  Agent  │
+    └─────────┘    └─────────┘    └─────────┘    └─────────┘
+
+    Each agent handles one stage of workflow
+    Results flow through the pipeline
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Pattern 3: Peer-to-Peer</h3>
+                    <div class="diagram">
+         ┌─────────┐◄────────────►┌─────────┐
+         │ Agent A │              │ Agent B │
+         └────┬────┘              └────┬────┘
+              │                        │
+              │    ┌─────────┐        │
+              └───►│ Agent C │◄───────┘
+                   └─────────┘
+
+    Agents communicate directly as needed
+    No central coordinator
+    A2A protocol enables discovery
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Pattern 4: Hierarchical</h3>
+                    <div class="diagram">
+                    ┌─────────────┐
+                    │   Manager   │
+                    │    Agent    │
+                    └──────┬──────┘
+                           │
+         ┌─────────────────┼─────────────────┐
+         ▼                 ▼                 ▼
+    ┌─────────┐       ┌─────────┐       ┌─────────┐
+    │  Team   │       │  Team   │       │  Team   │
+    │ Lead A  │       │ Lead B  │       │ Lead C  │
+    └────┬────┘       └────┬────┘       └────┬────┘
+         │                 │                 │
+    ┌────┴────┐       ┌────┴────┐       ┌────┴────┐
+    │ Workers │       │ Workers │       │ Workers │
+    └─────────┘       └─────────┘       └─────────┘
+                    </div>
+                </section>
+            </section>
+
+            <!-- Section 8: Summary -->
+            <section>
+                <section>
+                    <h2>Key Takeaways</h2>
+                </section>
+
+                <section>
+                    <h3>Remember These</h3>
+                    <ol>
+                        <li><span class="highlight">MCP</span> = Agent talks to Tools (vertical)</li>
+                        <li><span class="highlight">A2A</span> = Agent talks to Agents (horizontal)</li>
+                        <li><span class="highlight">Letta</span> = Agent remembers everything (temporal)</li>
+                        <li>They're <span class="success">complementary</span>, not competing</li>
+                        <li>Start simple, add complexity as needed</li>
+                    </ol>
+                </section>
+
+                <section>
+                    <h3>Getting Started</h3>
+                    <ul>
+                        <li><span class="highlight">MCP</span>: Use existing servers, define tool schemas</li>
+                        <li><span class="highlight">A2A</span>: Expose /.well-known/agent.json, use task API</li>
+                        <li><span class="highlight">Letta</span>: pip install letta, define memory blocks</li>
+                    </ul>
+                    <pre><code class="bash"># Try this codebase!
+cd agent-factory
+agent-factory examples/weather_agent.json \
+    --message "What's the weather?"</code></pre>
+                </section>
+
+                <section>
+                    <h3>Resources</h3>
+                    <ul>
+                        <li><a href="https://modelcontextprotocol.io/">MCP Documentation</a></li>
+                        <li><a href="https://a2a-protocol.org/latest/">A2A Protocol Spec</a></li>
+                        <li><a href="https://github.com/a2aproject/A2A">A2A GitHub</a></li>
+                        <li><a href="https://docs.letta.com/">Letta Documentation</a></li>
+                        <li><a href="https://github.com/letta-ai/letta">Letta GitHub</a></li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>Questions?</h2>
+                    <div class="diagram">
+    ┌──────────────────────────────────────────┐
+    │                                          │
+    │   "The best agent architecture is the   │
+    │    one that solves your actual problem  │
+    │    with the least complexity."          │
+    │                                          │
+    └──────────────────────────────────────────┘
+                    </div>
+                </section>
+            </section>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/highlight.min.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            slideNumber: true,
+            plugins: [RevealHighlight],
+            transition: 'slide',
+            backgroundTransition: 'fade'
+        });
+    </script>
+</body>
+</html>
